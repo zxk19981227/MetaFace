@@ -7,10 +7,13 @@ import torch.nn.functional as F
 from config import cfg
 
 
-def split_batch(vertices_pred,vertices_target,):
-    support_imgs, query_imgs = imgs.chunk(2, dim=0)
-    support_targets, query_targets = targets.chunk(2, dim=0)
-    return support_imgs, query_imgs, support_targets, query_targets
+def split_batch(audio, vertices_target, vertices_mask, person_id):
+    support_audio, query_audio = audio.chunk(2, dim=0)
+    support_vertices_gt, query_vertices_gt = vertices_target.chunk(2, dim=0)
+    support_vertices_mask, query_vertices_mask = vertices_mask.chunk(2, dim=0)
+    support_set_person_id, query_person_id = person_id.chunk(2, dim=0)
+    return (support_audio,query_audio,support_vertices_gt,query_vertices_gt,support_vertices_mask, query_vertices_mask,
+            support_set_person_id,query_person_id)
 
 
 def get_data_path(dataset_type='train', split=None):
@@ -40,9 +43,9 @@ def collate_fn(batch):
     filenames = []
     audio_masks = []
     vertices_masks = []
-    speaker_ids=[]
+    speaker_ids = []
     for b in batch:
-        (audio, vertice, template, file_name,speaker_id) = b
+        (audio, vertice, template, file_name, speaker_id) = b
         vertice_mask = mask_generation(vertice.shape[0])
         audios.append(audio)
         vertices.append(vertice)
@@ -55,11 +58,11 @@ def collate_fn(batch):
     vertice = pad_sequence(vertices, batch_first=True)
     template = torch.stack(templates, dim=0)
     vertices_masks = pad_sequence(vertices_masks, batch_first=True)
-    speaker_ids=torch.tensor(speaker_ids)
+    speaker_ids = torch.tensor(speaker_ids)
 
     return (
         audio, vertice, template, filenames, audio_masks,
-        vertices_masks,speaker_ids
+        vertices_masks, speaker_ids
     )
 
 

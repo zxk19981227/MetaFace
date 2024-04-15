@@ -20,7 +20,7 @@ class AudioDataset(Dataset):
         self.splits = {'vocaset': {'train': range(1, 41), 'val': range(21, 41), 'test': range(21, 41)},
                        'BIWI': {'train': range(1, 33), 'val': range(33, 37), 'test': range(37, 41)}}
         self.data = []
-        self.speaker_dict=defaultdict()
+        self.speaker_dict = defaultdict()
         if not cfg.use_pregenerated_feature:
 
             if self.backbone == 'hubert':
@@ -34,8 +34,8 @@ class AudioDataset(Dataset):
             )
         else:
             self.processor = None
-        self.audio_path_list, self.subjects,self.dataset_dict = get_data_path(dataset_type=data_type,
-                                                            split=self.splits[self.dataset_name])
+        self.audio_path_list, self.subjects, self.dataset_dict = get_data_path(dataset_type=data_type,
+                                                                               split=self.splits[self.dataset_name])
         self.audio_path = cfg.path.wav
         self.vertices_path = cfg.path.vertices
         self.template_file = cfg.path.template
@@ -56,9 +56,9 @@ class AudioDataset(Dataset):
             else:
                 self.person_file_dict[subject_id].append(file.replace("wav", "npy"))
         for file in self.data:
-            user_name='_'.join(file.split('_')[:4])
+            user_name = '_'.join(file.split('_')[:4])
             if user_name not in self.person_file_dict:
-                self.person_file_dict[user_name]=len(self.person_file_dict)
+                self.person_file_dict[user_name] = len(self.person_file_dict)
 
         self.len = len(self.data)
 
@@ -89,10 +89,10 @@ class AudioDataset(Dataset):
 
         else:
             raise NotImplementedError('dataset{} not implemented'.format(self.dataset_name))
-        speaker='_'.join(vertices_name.split('_')[:4])
+        speaker = '_'.join(vertices_name.split('_')[:4])
         if speaker not in self.speaker_dict.keys():
             raise NotImplementedError(f'{speaker} not exists ')
         else:
-            speaker_id=self.speaker_dict[speaker]
+            speaker_id = self.speaker_dict[speaker]
         template = self.templates[subject_id]
-        return vertice, audio, template,speaker_id
+        return vertice, audio, template, speaker_id

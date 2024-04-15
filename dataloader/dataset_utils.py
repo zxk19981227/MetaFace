@@ -1,14 +1,14 @@
-import random
 from collections import defaultdict
-from config import cfg
+
 import torch
+import random
 
 
 class FewShotBatchSampler:
-    def __init__(self,  dataset_targets,include_query=False, shuffle=True, shuffle_once=False):
+    def __init__(self, speaker_id, N_way, K_shot, include_query=False, shuffle=True, shuffle_once=False):
         """
         Inputs:
-            dataset_targets - PyTorch tensor of the people classification
+            dataset_targets - speaker ids of training speaker
             N_way - Number of classes to sample per batch.
             K_shot - Number of examples to sample per class in the batch.
             include_query - If True, returns batch of size N_way*K_shot*2, which
@@ -22,9 +22,9 @@ class FewShotBatchSampler:
                            (for validation)
         """
         super().__init__()
-        self.dataset_targets = dataset_targets
-        self.N_way = cfg.n_way
-        self.K_shot = cfg.k_way
+        self.dataset_targets = speaker_id
+        self.N_way = N_way
+        self.K_shot = K_shot
         self.shuffle = shuffle
         self.include_query = include_query
         if self.include_query:
@@ -70,10 +70,10 @@ class FewShotBatchSampler:
         # Sample few-shot batches
         start_index = defaultdict(int)
         for it in range(self.iterations):
-            class_batch = self.class_list[it * self.N_way : (it + 1) * self.N_way]  # Select N classes for the batch
+            class_batch = self.class_list[it * self.N_way: (it + 1) * self.N_way]  # Select N classes for the batch
             index_batch = []
             for c in class_batch:  # For each class, select the next K examples and add them to the batch
-                index_batch.extend(self.indices_per_class[c][start_index[c] : start_index[c] + self.K_shot])
+                index_batch.extend(self.indices_per_class[c][start_index[c]: start_index[c] + self.K_shot])
                 start_index[c] += self.K_shot
             if self.include_query:  # If we return support+query set, sort them so that they are easy to split
                 index_batch = index_batch[::2] + index_batch[1::2]

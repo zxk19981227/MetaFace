@@ -1,20 +1,15 @@
-import os
 import pickle
-from copy import deepcopy
 
 import numpy as np
 import torch
 import torch.nn as nn
-
-
-from utils import length_same
-from modules.hubert import Hubert2Vec
-from modules.wave2vec import Wav2Vec2Model
-from config import cfg
-
+from psbody.mesh import Mesh
 from torch.nn import Module
 
-from psbody.mesh import Mesh
+from config import cfg
+from modules.hubert import Hubert2Vec
+from modules.wave2vec import Wav2Vec2Model
+from utils import length_same
 
 
 # Temporal Bias, brrowed from https://github.com/EvelynFan/FaceFormer/blob/main/faceformer.py

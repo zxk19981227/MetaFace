@@ -1,10 +1,11 @@
-import torch
-import torch.nn.functional as F
+from typing import Optional, Tuple
+
 import numpy as np
+import torch
 from transformers import Wav2Vec2ForCTC
 from transformers import Wav2Vec2Model as wav2vec_official
 from transformers.modeling_outputs import BaseModelOutput, CausalLMOutput
-from typing import Optional, Tuple
+
 from config import cfg
 from utils import linear_interpolation
 

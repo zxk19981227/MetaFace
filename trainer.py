@@ -1,25 +1,15 @@
 import os
-import pickle
 from copy import deepcopy
 
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import math
-from numpy.linalg import norm
-
-from utils import length_same, split_batch
-from render_utils import render_sequence_meshes
-from modules.dtw import dtw
-from lightning import LightningModule
-from modules.hubert import Hubert2Vec
-from modules.wave2vec import Wav2Vec2Model
-from config import cfg
-from utils import mse_computation
 import torch.optim as optim
+from lightning import LightningModule
+
+from config import cfg
 from model import MamlTalk
-from psbody.mesh import Mesh
+from render_utils import render_sequence_meshes
+from utils import split_batch
 
 
 # Temporal Bias, brrowed from https://github.com/EvelynFan/FaceFormer/blob/main/faceformer.py
@@ -30,6 +20,7 @@ class MamlTrainer(LightningModule):
     def __init__(self):
         super(MamlTrainer, self).__init__()
         self.lip_vertice_mapper = None
+        self.cfg=cfg
         self.save_hyperparameters()
         self.model = MamlTalk()
 
@@ -87,8 +78,9 @@ class MamlTrainer(LightningModule):
 
         # Determine gradients for batch of tasks
         for task_batch in batch:
-            (audio, vertice, template, filenames, audio_masks,
-             vertices_masks, speaker_ids) = task_batch  # Perform inner loop adaptation
+            (
+                audio, vertice, vertices_mask,template, speaker_ids
+            ) = task_batch  # Perform inner loop adaptation
             (
                 support_audio, query_audio, support_vertice, query_vertice, support_vertice_mask,
                 query_vertice_mask, support_speaker, query_speaker
@@ -206,17 +198,17 @@ class MamlTrainer(LightningModule):
         torch.set_grad_enabled(True)
         self.outer_loop(batch, mode="val")
         torch.set_grad_enabled(False)
-    @torch.no_grad()
-    def test_proto_net(self, dataset,):
-        self.model.eval()
-        num_classes = dataset.targets.unique().shape[0]
-        exmps_per_class = [torch.sum(dataset[dataset["target"] ==i]) for i indataset.targets.unique()]
-        k_shot=self.k_shot
-        # The encoder network remains unchanged across k-shot settings. Hence, we only need
-        # to extract the features for all images once.
-        
-
-        return (mean(accuracies), stdev(accuracies)), (img_features, img_targets)
+    # @torch.no_grad()
+    # def test_proto_net(self, dataset,):
+    #     self.model.eval()
+    #     num_classes = dataset.targets.unique().shape[0]
+    #     exmps_per_class = [torch.sum(dataset[dataset["target"] ==i]) for i in dataset.targets.unique()]
+    #     k_shot=self.k_shot
+    #     # The encoder network remains unchanged across k-shot settings. Hence, we only need
+    #     # to extract the features for all images once.
+    #
+    #
+    #     return (mean(accuracies), stdev(accuracies)), (img_features, img_targets)
 
 
 

@@ -1,13 +1,17 @@
 import os
 import pickle
 
+
 import numpy as np
+import torch
 import torchaudio
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 from transformers import AutoProcessor
+from dataloader.dataset_utils import TaskBatchSampler
+
+
 
 from config import cfg
-from collections import defaultdict
 from utils import check_path_valid, get_data_path
 
 
@@ -20,7 +24,7 @@ class AudioDataset(Dataset):
         self.splits = {'vocaset': {'train': range(1, 41), 'val': range(21, 41), 'test': range(21, 41)},
                        'BIWI': {'train': range(1, 33), 'val': range(33, 37), 'test': range(37, 41)}}
         self.data = []
-        self.speaker_dict = defaultdict()
+        self.speaker_id=[]
         if not cfg.use_pregenerated_feature:
 
             if self.backbone == 'hubert':
@@ -34,7 +38,7 @@ class AudioDataset(Dataset):
             )
         else:
             self.processor = None
-        self.audio_path_list, self.subjects, self.dataset_dict = get_data_path(dataset_type=data_type,
+        self.audio_path_list, self.subjects, self.speaker_dict = get_data_path(dataset_type=data_type,
                                                                                split=self.splits[self.dataset_name])
         self.audio_path = cfg.path.wav
         self.vertices_path = cfg.path.vertices
@@ -51,6 +55,7 @@ class AudioDataset(Dataset):
                 self.data.append(audio_file_path)
         for file in self.data:
             subject_id = '_'.join(file.split('_')[:-1])
+            self.speaker_id.append(self.speaker_dict[subject_id])
             if subject_id not in self.person_file_dict.keys():
                 self.person_file_dict[subject_id] = [file]
             else:
@@ -59,7 +64,7 @@ class AudioDataset(Dataset):
             user_name = '_'.join(file.split('_')[:4])
             if user_name not in self.person_file_dict:
                 self.person_file_dict[user_name] = len(self.person_file_dict)
-
+        self.speaker_id=torch.from_numpy(np.array(self.speaker_id))
         self.len = len(self.data)
 
     def load_audio(self, wav_path):
@@ -73,7 +78,8 @@ class AudioDataset(Dataset):
             speech_array = sampler(speech_array)
             input_values = np.squeeze(self.processor(speech_array, sampling_rate=16000).input_values)
         return input_values
-
+    def __len__(self):
+        return len(self.data)
     def __getitem__(self, index):
         file_name = self.data[index]
         subject_id = '_'.join(file_name.split('_')[:-1])
@@ -91,8 +97,36 @@ class AudioDataset(Dataset):
             raise NotImplementedError('dataset{} not implemented'.format(self.dataset_name))
         speaker = '_'.join(vertices_name.split('_')[:4])
         if speaker not in self.speaker_dict.keys():
-            raise NotImplementedError(f'{speaker} not exists ')
+            raise NotImplementedError(f'{speaker} not exists in {self.speaker_dict.keys()} ')
         else:
             speaker_id = self.speaker_dict[speaker]
         template = self.templates[subject_id]
-        return vertice, audio, template, speaker_id
+        return torch.from_numpy(audio),torch.from_numpy(vertice), torch.from_numpy(template),speaker_id
+
+def get_dataloaders(batch_size=1):
+    dataloaders = {}
+
+    train_dataset=AudioDataset("train")
+    train_sampler=TaskBatchSampler(
+            train_dataset.speaker_id, include_query=True, N_way=cfg.n_way, K_shot=cfg.k_shot, shuffle=True,batch_size=batch_size
+        )
+    dataloaders["train"] = DataLoader(
+        dataset=train_dataset,   num_workers=1,batch_sampler=train_sampler,collate_fn=train_sampler.get_collate_fn()
+    )
+    val_dataset=AudioDataset('val')
+    val_sampler=TaskBatchSampler(
+            val_dataset.speaker_id, include_query=True, N_way=cfg.n_way, K_shot=cfg.k_shot, shuffle=True,batch_size=batch_size
+        )
+    dataloaders["val"] = DataLoader(
+        dataset=val_dataset, shuffle=False,
+        batch_sampler=val_sampler,collate_fn=val_sampler.get_collate_fn()
+    )
+    test_dataset=AudioDataset('test')
+    test_sampler=TaskBatchSampler(
+            test_dataset.speaker_id, include_query=True, N_way=cfg.n_way, K_shot=cfg.k_shot, shuffle=True,batch_size=batch_size
+        )
+    dataloaders["test"] = DataLoader(
+        dataset=test_dataset,num_workers=1,
+        batch_sampler=test_sampler,collate_fn=test_sampler.get_collate_fn()
+    )
+    return dataloaders

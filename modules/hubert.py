@@ -1,7 +1,9 @@
-from typing import Optional,Tuple,Union
+from typing import Optional, Tuple, Union
+
 import torch
-from transformers import HubertModel,HubertForCTC
+from transformers import HubertModel
 from transformers.modeling_outputs import BaseModelOutput
+
 from config import cfg
 from utils import linear_interpolation
 

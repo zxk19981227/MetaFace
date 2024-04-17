@@ -1,4 +1,5 @@
 import os
+
 from yacs.config import CfgNode as CN
 
 cfg = CN(new_allowed=True)
@@ -22,15 +23,15 @@ cfg.same_person=False
 cfg.save_path='/data3/zhouxukun/visual_talkface'
 
 cfg.path = CN(new_allowed=True)
-cfg.path.project = '/data3/zhouxukun/mabatalk'
+cfg.path.project = '/data3/zhouxukun/mamlface'
 cfg.path.hubert = '/data3/zhouxukun/transformer_model/hubert-large-ls960-ft'
 cfg.path.wav2vec = '/data3/zhouxukun/transformer_model/wav2vec2-large-960h-lv60-self/'
 cfg.path.wav2vec_ctc='/data3/zhouxukun/transformer_model/wav2vec2-large-xlsr-53-english'
 cfg.path.wav2phonem='/data3/zhouxukun/transformer_model/wav2vec2phoneme/'
-cfg.path.phoneme='/data3/zhouxukun/mabatalk/vocaset/phonome/fps30'
-cfg.path.visualize='/data3/zhouxukun/mabatalk/vis/'
+cfg.path.phoneme='/data3/zhouxukun/mamlface/vocaset/phonome/fps30'
+cfg.path.visualize='/data3/zhouxukun/mamlface/vis/'
 
-cfg.path.save = '/data3/zhouxukun/mabatalk/result/vocaset'
+cfg.path.save = '/data3/zhouxukun/mamlface/result/vocaset'
 cfg.path.wav = os.path.join(cfg.path.project, cfg.dataset, 'wav')
 cfg.path.save = os.path.join(cfg.path.project, cfg.dataset, 'result')
 cfg.path.vertices = os.path.join(cfg.path.project, cfg.dataset, 'vertices_npy')
@@ -49,6 +50,9 @@ cfg.model.video_fps = 30
 cfg.model.personal_dim = 1024
 cfg.model.pretrained = None
 cfg.model.use_pretrained=False
+
+cfg.n_way=11
+cfg.k_shot=2
 
 cfg.loss = CN(new_allowed=True)
 cfg.loss.l2 = 1000.0  # 正常loss

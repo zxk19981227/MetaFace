@@ -1,8 +1,7 @@
-from collections import defaultdict
-
-import torch
 import random
-
+from collections import defaultdict
+import torch
+from torch.nn.utils.rnn import pad_sequence
 
 class FewShotBatchSampler:
     def __init__(self, speaker_id, N_way, K_shot, include_query=False, shuffle=True, shuffle_once=False):
@@ -81,3 +80,86 @@ class FewShotBatchSampler:
 
     def __len__(self):
         return self.iterations
+
+
+    # def get_collate_fn(self):
+    #     # Returns a collate function that converts one big tensor into a list of task-specific tensors
+    #     def collate_fn(item_list):
+    #         # batch componments : audio,vertice,template,speaker_id
+    #         audio_batch,vertice_batch,template_batch,speaker_batch=[],[],[],[]
+    #
+    #         for batch in item_list:
+    #             audio,vert,temp,speaker=batch
+    #             audio_batch.append(audio)
+    #             vertice_batch.append(vert)
+    #             template_batch.append(temp)
+    #             speaker_batch.append(speaker)
+    #         audio_batch=pad_sequence(audio_batch,batch_first=True)
+    #         vertice_mask_batch=[torch.ones(each.shape) for each in vertice_batch]
+    #         vertice_batch=pad_sequence(vertice_batch,batch_first=True)
+    #         vertice_mask_batch=pad_sequence(vertice_mask_batch,batch_first=True)
+    #         template_batch=pad_sequence(template_batch,batch_first=True)
+    #
+    #         return list(zip(audio_batch,vertice_batch,vertice_mask_batch,template_batch))
+    #
+    #     return collate_fn
+class TaskBatchSampler:
+    def __init__(self, dataset_targets, batch_size, N_way, K_shot, include_query=False, shuffle=True):
+        """
+        Inputs:
+            dataset_targets - PyTorch tensor of the labels of the data elements.
+            batch_size - Number of tasks to aggregate in a batch
+            N_way - Number of classes to sample per batch.
+            K_shot - Number of examples to sample per class in the batch.
+            include_query - If True, returns batch of size N_way*K_shot*2, which
+                            can be split into support and query set. Simplifies
+                            the implementation of sampling the same classes but
+                            distinct examples for support and query set.
+            shuffle - If True, examples and classes are newly shuffled in each
+                      iteration (for training)
+        """
+        super().__init__()
+        self.batch_sampler = FewShotBatchSampler(dataset_targets, N_way, K_shot, include_query, shuffle)
+        self.task_batch_size = batch_size
+        self.local_batch_size = self.batch_sampler.batch_size
+
+    def __iter__(self):
+        # Aggregate multiple batches before returning the indices
+        batch_list = []
+        for batch_idx, batch in enumerate(self.batch_sampler):
+            batch_list.extend(batch)
+            if (batch_idx + 1) % self.task_batch_size == 0:
+                yield batch_list
+                batch_list = []
+
+    def __len__(self):
+        return len(self.batch_sampler) // self.task_batch_size
+
+    def get_collate_fn(self):
+        def collate_fn(item_list):
+            # batch componments : audio,vertice,template,speaker_id
+            audio_batch, vertice_batch, template_batch, speaker_batch = [], [], [], []
+
+            for batch in item_list:
+                audio, vert, temp, speaker = batch
+                audio_batch.append(audio)
+                vertice_batch.append(vert)
+                template_batch.append(temp)
+                speaker_batch.append(speaker)
+            vertice_mask_batch = [torch.ones(each.shape) for each in vertice_batch]
+
+            audio_batch = pad_sequence(audio_batch, batch_first=True)
+            vertice_batch = pad_sequence(vertice_batch, batch_first=True)
+            vertice_mask_batch = pad_sequence(vertice_mask_batch, batch_first=True)
+            template_batch = pad_sequence(template_batch, batch_first=True)
+
+            audio_batch=audio_batch.chunk(self.task_batch_size,dim=0)
+            vertice_mask_batch=vertice_mask_batch.chunk(self.task_batch_size,dim=0)
+            vertice_batch=vertice_batch.chunk(self.task_batch_size,dim=0)
+            template_batch=template_batch.chunk(self.task_batch_size,dim=0)
+
+
+
+            return audio_batch, vertice_batch, vertice_mask_batch, template_batch
+        return collate_fn
+

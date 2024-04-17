@@ -1,10 +1,14 @@
 import os
+
+import numpy as np
 import torch
+import torch.nn.functional as F
 import torchaudio
 from torch.nn.utils.rnn import pad_sequence
-import numpy as np
-import torch.nn.functional as F
+
 from config import cfg
+
+
 
 
 def split_batch(audio, vertices_target, vertices_mask, person_id):
@@ -36,34 +40,54 @@ def get_data_path(dataset_type='train', split=None):
     return audio_path_list, data_split, user_id_dict
 
 
-def collate_fn(batch):
-    audios = []
-    vertices = []
-    templates = []
-    filenames = []
-    audio_masks = []
-    vertices_masks = []
-    speaker_ids = []
-    for b in batch:
-        (audio, vertice, template, file_name, speaker_id) = b
-        vertice_mask = mask_generation(vertice.shape[0])
-        audios.append(audio)
-        vertices.append(vertice)
-        templates.append(template.reshape(-1))
-        filenames.append(file_name)
-        vertices_masks.append(vertice_mask)
-        speaker_ids.append(speaker_id)
+# def collate_fn(batch):
+#     audios = []
+#     vertices = []
+#     templates = []
+#     filenames = []
+#     audio_masks = []
+#     vertices_masks = []
+#     speaker_ids = []
+#     for b in batch:
+#         (audio, vertice, template, file_name, speaker_id) = b
+#         vertice_mask = mask_generation(vertice.shape[0])
+#         audios.append(audio)
+#         vertices.append(vertice)
+#         templates.append(template.reshape(-1))
+#         filenames.append(file_name)
+#         vertices_masks.append(vertice_mask)
+#         speaker_ids.append(speaker_id)
+#
+#     audio = pad_sequence(audios, batch_first=True)
+#     vertice = pad_sequence(vertices, batch_first=True)
+#     template = torch.stack(templates, dim=0)
+#     vertices_masks = pad_sequence(vertices_masks, batch_first=True)
+#     speaker_ids = torch.tensor(speaker_ids)
+#
+#     return (
+#         audio, vertice, template, filenames, audio_masks,
+#         vertices_masks, speaker_ids
+#     )
+# Returns a collate function that converts one big tensor into a list of task-specific tensors
+# def collate_fn(item_list):
+#     # batch componments : audio,vertice,template,speaker_id
+#     audio_batch,vertice_batch,template_batch,speaker_batch=[],[],[],[]
+#
+#     for batch in item_list:
+#         audio,vert,temp,speaker=batch
+#         audio_batch.append(audio)
+#         vertice_batch.append(vert)
+#         template_batch.append(temp)
+#         speaker_batch.append(speaker)
+#     audio_batch=pad_sequence(audio_batch,batch_first=True)
+#     vertice_mask_batch=[torch.ones(each.shape) for each in vertice_batch]
+#     vertice_batch=pad_sequence(vertice_batch,batch_first=True)
+#     vertice_mask_batch=pad_sequence(vertice_mask_batch,batch_first=True)
+#     template_batch=pad_sequence(template_batch,batch_first=True)
+#     speaker_batch=torch.tensor(speaker_batch)
+#
+#     return list(zip(audio_batch,vertice_batch,vertice_mask_batch,template_batch,speaker_batch))
 
-    audio = pad_sequence(audios, batch_first=True)
-    vertice = pad_sequence(vertices, batch_first=True)
-    template = torch.stack(templates, dim=0)
-    vertices_masks = pad_sequence(vertices_masks, batch_first=True)
-    speaker_ids = torch.tensor(speaker_ids)
-
-    return (
-        audio, vertice, template, filenames, audio_masks,
-        vertices_masks, speaker_ids
-    )
 
 
 def check_path_valid(audio_path, vertices_path):

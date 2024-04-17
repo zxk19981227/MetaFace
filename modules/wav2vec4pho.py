@@ -1,11 +1,12 @@
-from transformers import Wav2Vec2ForCTC as official_wav2vecforctc
+from typing import Optional, Tuple
 
-from modules.wave2vec import Wav2Vec2Model
+import numpy as np
 import torch
 import torch.nn.functional as F
-import numpy as np
+from transformers import Wav2Vec2ForCTC as official_wav2vecforctc
 from transformers.modeling_outputs import CausalLMOutput
-from typing import Optional, Tuple
+
+from modules.wave2vec import Wav2Vec2Model
 
 
 def _compute_mask_indices(

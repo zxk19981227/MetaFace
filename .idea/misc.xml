@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="Black">
-    <option name="sdkName" value="Python 3.9" />
-  </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Remote Python 3.9.18 (sftp://zhouxukun@202.112.113.132:22/home/zhouxukun/miniconda3/envs/pl/bin/python)" project-jdk-type="Python SDK" />
-</project>

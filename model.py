@@ -37,17 +37,17 @@ class MamlTalk(Module):
             for param in self.audio_encoder.parameters():
                 param.requires_grad = False
 
-        if cfg.dataset == "vocaset":
-            with open(cfg.path.pkl, 'rb') as f:
-                self.lip_mask = pickle.load(f, encoding='latin1')["lips"]
-                self.lip_map = nn.Linear(254 * 3, 1024)
-
-        elif cfg.dataset == "BIWI":
-            with open('./BIWI/BIWI_lip.pkl', 'rb') as f:
-                self.lip_mask = pickle.load(f, encoding='latin1')
-                self.lip_map = nn.Linear(4996 * 3, 1024)
-        else:
-            raise NotImplementedError
+        # if cfg.dataset == "vocaset":
+        #     with open(cfg.path.pkl, 'rb') as f:
+        #         self.lip_mask = pickle.load(f, encoding='latin1')["lips"]
+        #         self.lip_map = nn.Linear(254 * 3, 1024)
+        #
+        # elif cfg.dataset == "BIWI":
+        #     with open('./BIWI/BIWI_lip.pkl', 'rb') as f:
+        #         self.lip_mask = pickle.load(f, encoding='latin1')
+        #         self.lip_map = nn.Linear(4996 * 3, 1024)
+        # else:
+        #     raise NotImplementedError
         self.audio_fps = cfg.audio_fps
         self.video_fps = cfg.video_fps
 

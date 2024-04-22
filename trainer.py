@@ -21,6 +21,7 @@ class MamlTrainer(LightningModule):
     def __init__(self):
         super(MamlTrainer, self).__init__()
         self.lip_vertice_mapper = None
+        self.automatic_optimization=False
         self.cfg=cfg
         self.save_hyperparameters()
         self.model = MamlTalk()
@@ -48,7 +49,7 @@ class MamlTrainer(LightningModule):
         # Determine prototype initialization
         # print(support_vertice_mask.shape)
         # exit()
-        support_pred = self.model(support_audios, support_vertice_mask)
+        # support_pred = self.model(support_audios, support_vertice_mask)
         #  这里原本是说，输入一个文本以后把这个support和targets的protype进行分类，但是实际做regression任务并且不实用prototype时候这里完全没有用
         # support_labels = (classes[None, :] == support_targets[:, None]).long().argmax(dim=-1)
         # Create inner-loop model and optimizer
@@ -102,10 +103,14 @@ class MamlTrainer(LightningModule):
             if mode == "train":
                 loss.backward()
 
-                for p_global, p_local in zip(self.model.parameters(), local_model.parameters()):
-                    p_global.grad += p_local.grad  # First-order approx. -> add gradients of finetuned and base model
+                for p_global, p_local in zip(self.model.named_parameters(), local_model.named_parameters()):
+                    if p_local[1].grad is None:
+                        continue
+                    if p_global[1].grad is None and p_local[1].grad is not None:
+                        p_global[1].grad=torch.zeros_like(p_local[1].grad)
+                    p_global[1].grad += p_local[1].grad  # First-order approx. -> add gradients of finetuned and base model
 
-            # losses.append(loss.detach())
+            losses.append(loss.detach())
 
         # Perform update of base model
         if mode == "train":
@@ -114,7 +119,7 @@ class MamlTrainer(LightningModule):
             opt.zero_grad()
 
         self.log("%s_loss" % mode, sum(losses) / len(losses))
-        self.log("%s_acc" % mode, sum(accuracies) / len(accuracies))
+        # self.log("%s_acc" % mode, sum(accuracies) / len(accuracies))
 
     def loss_function(
             self, vertices_gt, vertices_pred, vertice_mask, process='train',
@@ -225,7 +230,7 @@ class MamlTrainer(LightningModule):
 
     def training_step(self, batch, batch_idx):
         self.outer_loop(batch, mode="train")
-        return None  # Returning None means we skip the default training optimizer steps by PyTorch Lightning
+        # return None  # Returning None means we skip the default training optimizer steps by PyTorch Lightning
 
     def validation_step(self, batch, batch_idx):
         # Validation requires to finetune a model, hence we need to enable gradients

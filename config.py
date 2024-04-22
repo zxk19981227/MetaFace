@@ -53,6 +53,8 @@ cfg.model.use_pretrained=False
 
 cfg.n_way=11
 cfg.k_shot=2
+cfg.lr_inner=1e-4
+cfg.num_inner_steps=1
 
 cfg.loss = CN(new_allowed=True)
 cfg.loss.l2 = 1000.0  # 正常loss

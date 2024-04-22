@@ -51,7 +51,6 @@ class MamlTalk(Module):
         self.audio_fps = cfg.audio_fps
         self.video_fps = cfg.video_fps
 
-        self.mse_func = nn.MSELoss(reduction='none')
         # if cfg.cross_train:
 
         self.lip_vertice_mapper = []
@@ -97,7 +96,7 @@ class MamlTalk(Module):
             self, audio,vertices_mask
     ):
         # 扩展模型基础为1*batchsize方便直接使用
-        template = template.unsqueeze(1)
+        # template = template.unsqueeze(1)
 
         if not cfg.use_pregenerated_feature:
             hidden_states = self.audio_encoder(audio).last_hidden_state
@@ -105,7 +104,6 @@ class MamlTalk(Module):
             hidden_states = audio  # bzs,seq,1024
         hidden_states, vertices_mask = length_same(hidden_states, vertices_mask)
         vertice_input = self.audio_feature_map(hidden_states)
-
         vertice_out = self.transformer_decoder(vertice_input, vertice_input, tgt_key_padding_mask=vertices_mask,
                                                memory_key_padding_mask=vertices_mask)
         vertice_out = self.vertice_map_r(vertice_out)
@@ -113,33 +111,5 @@ class MamlTalk(Module):
         vertice_out = vertice_out
         return vertice_out
 
-    def loss_function(
-            self, vertices_gt, vertices_pred, vertice_mask,  process='train',
-    ):
 
-        vertices_pred, vertices_gt = length_same(vertices_pred, vertices_gt)
-        vertice_mask, vertices_gt = length_same(vertice_mask, vertices_gt)
-        change_location_mask = torch.abs(change_location[:, 1:] - change_location[:, :-1])
-
-        assert vertices_gt.size() == vertices_pred.size()
-
-        basic_loss = self.mse_func(vertices_gt, vertices_pred) * cfg.loss.l2
-        basic_loss1 = basic_loss * vertice_mask.unsqueeze(2)
-        basic_loss = torch.sum(basic_loss1) / torch.sum(vertice_mask) / basic_loss.shape[2]
-        self.log(f"{process}_l2_loss", basic_loss, prog_bar=True, batch_size=vertices_gt.shape[0])
-
-        if cfg.loss.freq > 0:
-            fluency_loss = self.mse_func(
-                vertices_gt[:, 1:, :] - vertices_gt[:, :-1, :], vertices_pred[:, 1:] - vertices_pred[:, :-1]
-            )
-            assert (vertices_gt[:, 1:, :] - vertices_gt[:, :-1, :]).size() == (
-                    vertices_pred[:, 1:] - vertices_pred[:, :-1]).size()
-
-            fluency_loss = fluency_loss * vertice_mask[:, 1:].unsqueeze(2) * change_location_mask.unsqueeze(2)
-            fluency_loss = torch.sum(fluency_loss) / torch.sum(vertice_mask[:, 1:]) / vertices_gt.shape[2]
-
-            basic_loss += fluency_loss
-            self.log(f"{process}_fluency_loss", fluency_loss, prog_bar=True, batch_size=vertices_gt.shape[0])
-        self.log(f"{process}_total_loss", basic_loss, prog_bar=True, batch_size=vertices_gt.shape[0])
-        return basic_loss
 

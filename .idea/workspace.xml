@@ -5,21 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="48a5c919-82cc-4d99-ae2f-d87b588ca53c" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/args.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/render_utils.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/yml/vocaset.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dataloader/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataloader/dataset.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/dataloader/dataset_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/dataloader/dataset_utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/hubert.py" beforeDir="false" afterPath="$PROJECT_DIR$/modules/hubert.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/wav2vec4ctc.py" beforeDir="false" afterPath="$PROJECT_DIR$/modules/wav2vec4ctc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/wav2vec4pho.py" beforeDir="false" afterPath="$PROJECT_DIR$/modules/wav2vec4pho.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/wave2vec.py" beforeDir="false" afterPath="$PROJECT_DIR$/modules/wave2vec.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/trainer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -60,11 +50,12 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "Python.dataset_utils.executor": "Run",
     "Python.main.executor": "Run",
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "git-widget-placeholder": "main",
-    "last_opened_file_path": "/Users/xukun/Desktop/mamlface/yml",
+    "last_opened_file_path": "/Users/xukun/Desktop/mamlface",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -83,7 +74,30 @@
       <recent name="$PROJECT_DIR$" />
     </key>
   </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="Python.main">
+    <configuration name="dataset_utils" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="mamlface" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/dataloader" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/dataloader/dataset_utils.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="mamlface" />
       <option name="ENV_FILES" value="" />
@@ -111,6 +125,7 @@
     <recent_temporary>
       <list>
         <item itemvalue="Python.main" />
+        <item itemvalue="Python.dataset_utils" />
       </list>
     </recent_temporary>
   </component>
@@ -131,7 +146,8 @@
       <updated>1713149052567</updated>
       <workItem from="1713149053783" duration="13084000" />
       <workItem from="1713184799387" duration="538000" />
-      <workItem from="1713185351481" duration="23805000" />
+      <workItem from="1713185351481" duration="23807000" />
+      <workItem from="1713674584150" duration="9480000" />
     </task>
     <servers />
   </component>
@@ -143,13 +159,21 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/trainer.py</url>
-          <line>192</line>
-          <option name="timeStamp" value="7" />
+          <line>122</line>
+          <option name="timeStamp" value="13" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
+    <watches-manager>
+      <configuration name="PythonConfigurationType">
+        <watch expression="audio_batch[1].shape" language="Python" />
+        <watch expression="self.adapt_few_shot" language="Python" />
+        <watch expression="vertice_mask_batch[0].shape" language="Python" />
+      </configuration>
+    </watches-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/mamlface$main.coverage" NAME="main Coverage Results" MODIFIED="1713268878165" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/mamlface$dataset_utils.coverage" NAME="dataset_utils Coverage Results" MODIFIED="1713674648242" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/dataloader" />
+    <SUITE FILE_PATH="coverage/mamlface$main.coverage" NAME="main Coverage Results" MODIFIED="1713711416936" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>

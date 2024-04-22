@@ -82,27 +82,6 @@ class FewShotBatchSampler:
         return self.iterations
 
 
-    # def get_collate_fn(self):
-    #     # Returns a collate function that converts one big tensor into a list of task-specific tensors
-    #     def collate_fn(item_list):
-    #         # batch componments : audio,vertice,template,speaker_id
-    #         audio_batch,vertice_batch,template_batch,speaker_batch=[],[],[],[]
-    #
-    #         for batch in item_list:
-    #             audio,vert,temp,speaker=batch
-    #             audio_batch.append(audio)
-    #             vertice_batch.append(vert)
-    #             template_batch.append(temp)
-    #             speaker_batch.append(speaker)
-    #         audio_batch=pad_sequence(audio_batch,batch_first=True)
-    #         vertice_mask_batch=[torch.ones(each.shape) for each in vertice_batch]
-    #         vertice_batch=pad_sequence(vertice_batch,batch_first=True)
-    #         vertice_mask_batch=pad_sequence(vertice_mask_batch,batch_first=True)
-    #         template_batch=pad_sequence(template_batch,batch_first=True)
-    #
-    #         return list(zip(audio_batch,vertice_batch,vertice_mask_batch,template_batch))
-    #
-    #     return collate_fn
 class TaskBatchSampler:
     def __init__(self, dataset_targets, batch_size, N_way, K_shot, include_query=False, shuffle=True):
         """
@@ -137,7 +116,6 @@ class TaskBatchSampler:
 
     def get_collate_fn(self):
         def collate_fn(item_list):
-            # batch componments : audio,vertice,template,speaker_id
             audio_batch, vertice_batch, template_batch, speaker_batch = [], [], [], []
 
             for batch in item_list:
@@ -146,20 +124,19 @@ class TaskBatchSampler:
                 vertice_batch.append(vert)
                 template_batch.append(temp)
                 speaker_batch.append(speaker)
-            vertice_mask_batch = [torch.ones(each.shape) for each in vertice_batch]
+            vertice_mask_batch = [torch.ones(each.shape[0]) for each in vertice_batch]
 
-            audio_batch = pad_sequence(audio_batch, batch_first=True)
-            vertice_batch = pad_sequence(vertice_batch, batch_first=True)
-            vertice_mask_batch = pad_sequence(vertice_mask_batch, batch_first=True)
-            template_batch = pad_sequence(template_batch, batch_first=True)
-
+            audio_batch = pad_sequence(audio_batch, batch_first=True).float()
+            vertice_batch = pad_sequence(vertice_batch, batch_first=True).float()
+            vertice_mask_batch = pad_sequence(vertice_mask_batch, batch_first=True).float()
+            template_batch = pad_sequence(template_batch, batch_first=True).float()
+            speaker_batch=torch.tensor(speaker_batch).float()
             audio_batch=audio_batch.chunk(self.task_batch_size,dim=0)
             vertice_mask_batch=vertice_mask_batch.chunk(self.task_batch_size,dim=0)
             vertice_batch=vertice_batch.chunk(self.task_batch_size,dim=0)
             template_batch=template_batch.chunk(self.task_batch_size,dim=0)
+            speaker_batch=speaker_batch.chunk(self.task_batch_size,dim=0)
 
-
-
-            return audio_batch, vertice_batch, vertice_mask_batch, template_batch
+            return list(zip(audio_batch, vertice_batch, vertice_mask_batch, template_batch,speaker_batch))
         return collate_fn
 

@@ -8,8 +8,9 @@ from lightning import LightningModule
 
 from config import cfg
 from model import MamlTalk
+from torch import nn
 from render_utils import render_sequence_meshes
-from utils import split_batch
+from utils import split_batch, length_same
 
 
 # Temporal Bias, brrowed from https://github.com/EvelynFan/FaceFormer/blob/main/faceformer.py
@@ -23,6 +24,7 @@ class MamlTrainer(LightningModule):
         self.cfg=cfg
         self.save_hyperparameters()
         self.model = MamlTalk()
+        self.mse_func = nn.MSELoss(reduction='none')
 
     def get_self_prediction(self, batch):
         (audio, vertice, template, filenames, audio_masks,
@@ -44,6 +46,8 @@ class MamlTrainer(LightningModule):
 
     def adapt_few_shot(self, support_audios, support_vertice_mask, support_vertice, support_speaker):
         # Determine prototype initialization
+        # print(support_vertice_mask.shape)
+        # exit()
         support_pred = self.model(support_audios, support_vertice_mask)
         #  这里原本是说，输入一个文本以后把这个support和targets的protype进行分类，但是实际做regression任务并且不实用prototype时候这里完全没有用
         # support_labels = (classes[None, :] == support_targets[:, None]).long().argmax(dim=-1)
@@ -56,10 +60,10 @@ class MamlTrainer(LightningModule):
         # 这里原本是用来初始化相关的模型代码的。但是不用prototypes完全不用这个
 
         # Optimize inner loop model on support set
-        for _ in range(self.hparams.num_inner_steps):
+        for _ in range(self.cfg.num_inner_steps):
             # Determine loss on the support set
             predict_vertice = local_model(support_audios, support_vertice_mask)
-            loss=self.model.loss_function(predict_vertice, support_vertice, support_vertice_mask)
+            loss=self.loss_function(predict_vertice, support_vertice, support_vertice_mask)
             # Calculate gradients and perform inner loop update
             loss.backward()
             local_optim.step()
@@ -84,15 +88,16 @@ class MamlTrainer(LightningModule):
             (
                 support_audio, query_audio, support_vertice, query_vertice, support_vertice_mask,
                 query_vertice_mask, support_speaker, query_speaker
-            ) = split_batch(audio, vertice, template, speaker_ids)
+            ) = split_batch(audio, vertice, vertices_mask, speaker_ids)
 
             local_model = self.adapt_few_shot(
-                support_audio,support_vertice_mask,support_vertice,support_speaker
+                support_audios=support_audio,support_vertice_mask=support_vertice_mask,support_vertice=support_vertice,
+                support_speaker=support_speaker
             )
             # Determine loss of query set
             # query_labels = (classes[None, :] == query_targets[:, None]).long().argmax(dim=-1)
             pred_vertices=local_model(query_audio,query_vertice_mask)
-            loss = self.model.loss_function(pred_vertices, query_vertice,mode)
+            loss = self.loss_function(pred_vertices, query_vertice,query_vertice_mask,mode)
             # Calculate gradients for query set loss
             if mode == "train":
                 loss.backward()
@@ -111,6 +116,35 @@ class MamlTrainer(LightningModule):
         self.log("%s_loss" % mode, sum(losses) / len(losses))
         self.log("%s_acc" % mode, sum(accuracies) / len(accuracies))
 
+    def loss_function(
+            self, vertices_gt, vertices_pred, vertice_mask, process='train',
+    ):
+
+        vertices_pred, vertices_gt = length_same(vertices_pred, vertices_gt)
+        vertice_mask, vertices_gt = length_same(vertice_mask, vertices_gt)
+        # change_location_mask = torch.abs(change_location[:, 1:] - change_location[:, :-1])
+
+        assert vertices_gt.size() == vertices_pred.size()
+
+        basic_loss = self.mse_func(vertices_gt, vertices_pred) * cfg.loss.l2
+        basic_loss1 = basic_loss * vertice_mask.unsqueeze(2)
+        basic_loss = torch.sum(basic_loss1) / torch.sum(vertice_mask) / basic_loss.shape[2]
+        self.log(f"{process}_l2_loss", basic_loss, prog_bar=True, batch_size=vertices_gt.shape[0])
+
+        if cfg.loss.freq > 0:
+            fluency_loss = self.mse_func(
+                vertices_gt[:, 1:, :] - vertices_gt[:, :-1, :], vertices_pred[:, 1:] - vertices_pred[:, :-1]
+            )
+            assert (vertices_gt[:, 1:, :] - vertices_gt[:, :-1, :]).size() == (
+                    vertices_pred[:, 1:] - vertices_pred[:, :-1]).size()
+
+            fluency_loss = fluency_loss * vertice_mask[:, 1:].unsqueeze(2)  # * change_location_mask.unsqueeze(2)
+            fluency_loss = torch.sum(fluency_loss) / torch.sum(vertice_mask[:, 1:]) / vertices_gt.shape[2]
+
+            basic_loss += fluency_loss
+            self.log(f"{process}_fluency_loss", fluency_loss, prog_bar=True, batch_size=vertices_gt.shape[0])
+        self.log(f"{process}_total_loss", basic_loss, prog_bar=True, batch_size=vertices_gt.shape[0])
+        return basic_loss
     def on_test_epoch_start(self) -> None:
         self.lip_vertice_mapper = []
 
@@ -152,42 +186,42 @@ class MamlTrainer(LightningModule):
 
         return vertice_predictions
 
-    def adapt_few_shot(self, support_imgs, support_targets):
-        # Determine prototype initialization
-        support_feats = self.model(support_imgs)
-        prototypes, classes = self.calculate_prototypes(support_feats, support_targets)
-        support_labels = (classes[None, :] == support_targets[:, None]).long().argmax(dim=-1)
-        # Create inner-loop model and optimizer
-        local_model = deepcopy(self.model)
-        local_model.train()
-        local_optim = optim.SGD(local_model.parameters(), lr=self.hparams.lr_inner)
-        local_optim.zero_grad()
-        # Create output layer weights with prototype-based initialization
-        init_weight = 2 * prototypes
-        init_bias = -torch.norm(prototypes, dim=1) ** 2
-        output_weight = init_weight.detach().requires_grad_()
-        output_bias = init_bias.detach().requires_grad_()
-
-        # Optimize inner loop model on support set
-        for _ in range(self.hparams.num_inner_steps):
-            # Determine loss on the support set
-            loss, _, _ = self.run_model(local_model, output_weight, output_bias, support_imgs, support_labels)
-            # Calculate gradients and perform inner loop update
-            loss.backward()
-            local_optim.step()
-            # Update output layer via SGD
-            output_weight.data -= self.hparams.lr_output * output_weight.grad
-            output_bias.data -= self.hparams.lr_output * output_bias.grad
-            # Reset gradients
-            local_optim.zero_grad()
-            output_weight.grad.fill_(0)
-            output_bias.grad.fill_(0)
-
-        # Re-attach computation graph of prototypes
-        output_weight = (output_weight - init_weight).detach() + init_weight
-        output_bias = (output_bias - init_bias).detach() + init_bias
-
-        return local_model, output_weight, output_bias, classes
+    # def adapt_few_shot(self, support_imgs, support_targets):
+    #     # Determine prototype initialization
+    #     support_feats = self.model(support_imgs)
+    #     prototypes, classes = self.calculate_prototypes(support_feats, support_targets)
+    #     support_labels = (classes[None, :] == support_targets[:, None]).long().argmax(dim=-1)
+    #     # Create inner-loop model and optimizer
+    #     local_model = deepcopy(self.model)
+    #     local_model.train()
+    #     local_optim = optim.SGD(local_model.parameters(), lr=self.hparams.lr_inner)
+    #     local_optim.zero_grad()
+    #     # Create output layer weights with prototype-based initialization
+    #     init_weight = 2 * prototypes
+    #     init_bias = -torch.norm(prototypes, dim=1) ** 2
+    #     output_weight = init_weight.detach().requires_grad_()
+    #     output_bias = init_bias.detach().requires_grad_()
+    #
+    #     # Optimize inner loop model on support set
+    #     for _ in range(self.hparams.num_inner_steps):
+    #         # Determine loss on the support set
+    #         loss, _, _ = self.run_model(local_model, output_weight, output_bias, support_imgs, support_labels)
+    #         # Calculate gradients and perform inner loop update
+    #         loss.backward()
+    #         local_optim.step()
+    #         # Update output layer via SGD
+    #         output_weight.data -= self.hparams.lr_output * output_weight.grad
+    #         output_bias.data -= self.hparams.lr_output * output_bias.grad
+    #         # Reset gradients
+    #         local_optim.zero_grad()
+    #         output_weight.grad.fill_(0)
+    #         output_bias.grad.fill_(0)
+    #
+    #     # Re-attach computation graph of prototypes
+    #     output_weight = (output_weight - init_weight).detach() + init_weight
+    #     output_bias = (output_bias - init_bias).detach() + init_bias
+    #
+    #     return local_model, output_weight, output_bias, classes
 
     def training_step(self, batch, batch_idx):
         self.outer_loop(batch, mode="train")

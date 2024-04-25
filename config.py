@@ -52,7 +52,7 @@ cfg.model.pretrained = None
 cfg.model.use_pretrained=False
 
 cfg.n_way=11
-cfg.k_shot=2
+cfg.k_shot=1
 cfg.lr_inner=1e-4
 cfg.num_inner_steps=1
 

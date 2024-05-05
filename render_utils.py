@@ -11,14 +11,15 @@ More information about VOCA is available at http://voca.is.tue.mpg.de.
 For comments or questions, please email us at voca@tue.mpg.de
 '''
 
+import pyrender
+
 import os
 import tempfile
 from subprocess import call
 
 import cv2
 import numpy as np
-# os.environ['PYOPENGL_PLATFORM'] = 'osmesa'  # egl
-import pyrender
+os.environ['PYOPENGL_PLATFORM'] = 'osmesa'  # egl
 import trimesh
 from psbody.mesh import Mesh
 

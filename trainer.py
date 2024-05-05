@@ -1,6 +1,7 @@
 import os
 from copy import deepcopy
-
+os.environ['PYOPENGL_PLATFORM'] = 'osmesa'  # egl
+#
 import numpy as np
 import torch
 import torch.optim as optim
@@ -40,16 +41,14 @@ class MamlTrainer(LightningModule):
         scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[140, 180], gamma=0.1)
         return [optimizer], [scheduler]
 
-    def validation_step(self, batch, batch_idx):
-        vertice_prediction, vertice, vertice_mask, match_vertice, change_location = self.get_self_prediction(batch)
 
-        self.loss_function(vertice_prediction, vertice, vertice_mask, change_location, 'valid')
 
-    def adapt_few_shot(self, support_audios, support_vertice_mask, support_vertice, support_speaker):
-        # Determine prototype initialization
-        # print(support_vertice_mask.shape)
-        # exit()
-        # support_pred = self.model(support_audios, support_vertice_mask)
+
+
+
+
+    def adapt_few_shot(self, support_audios, support_vertice_mask, support_vertice, support_template):
+
         #  这里原本是说，输入一个文本以后把这个support和targets的protype进行分类，但是实际做regression任务并且不实用prototype时候这里完全没有用
         # support_labels = (classes[None, :] == support_targets[:, None]).long().argmax(dim=-1)
         # Create inner-loop model and optimizer
@@ -59,20 +58,19 @@ class MamlTrainer(LightningModule):
         local_optim.zero_grad()
         # Create output layer weights with prototype-based initialization
         # 这里原本是用来初始化相关的模型代码的。但是不用prototypes完全不用这个
-
+        support_template=support_template.view(support_template.shape[0],-1).unsqueeze(1)
         # Optimize inner loop model on support set
         for _ in range(self.cfg.num_inner_steps):
             # Determine loss on the support set
             predict_vertice = local_model(support_audios, support_vertice_mask)
+            predict_vertice=predict_vertice+support_template
             loss=self.loss_function(predict_vertice, support_vertice, support_vertice_mask)
             # Calculate gradients and perform inner loop update
             loss.backward()
             local_optim.step()
             local_optim.zero_grad()
 
-        # Re-attach computation graph of prototypes
-        # output_weight = (output_weight - init_weight).detach() + init_weight
-        # output_bias = (output_bias - init_bias).detach() + init_bias
+
 
         return local_model
 
@@ -88,16 +86,18 @@ class MamlTrainer(LightningModule):
             ) = task_batch  # Perform inner loop adaptation
             (
                 support_audio, query_audio, support_vertice, query_vertice, support_vertice_mask,
-                query_vertice_mask, support_speaker, query_speaker
-            ) = split_batch(audio, vertice, vertices_mask, speaker_ids)
+                query_vertice_mask, support_speaker, query_speaker,support_template,query_template
+            ) = split_batch(audio, vertice, vertices_mask, speaker_ids,template)
 
             local_model = self.adapt_few_shot(
                 support_audios=support_audio,support_vertice_mask=support_vertice_mask,support_vertice=support_vertice,
-                support_speaker=support_speaker
+                support_template=support_template
             )
             # Determine loss of query set
             # query_labels = (classes[None, :] == query_targets[:, None]).long().argmax(dim=-1)
             pred_vertices=local_model(query_audio,query_vertice_mask)
+            query_template=query_template.view(query_template.shape[0],-1).unsqueeze(1)
+            pred_vertices=pred_vertices+query_template
             loss = self.loss_function(pred_vertices, query_vertice,query_vertice_mask,mode)
             # Calculate gradients for query set loss
             if mode == "train":
@@ -163,17 +163,18 @@ class MamlTrainer(LightningModule):
             os.mkdir(cfg.path.save)
         # (audio, vertice, template, filenames,reference_name, reference_motion, reference_audio, audio_mask,
         # vertice_mask, match_audio_vertice,reference_audio_mask, reference_motion_mask) = batch
-        audio, vertice, template, filenames, reference_name, reference_motion, reference_audio, audio_mask, vertice_mask, reference_audio_mask, reference_motion_mask, ref_poho, gt_pho = batch
-
-        vertice_predictions = self.forward(audio, template, audio_mask)
-
+        (audio, vertice, template, filenames,
+        vertices_masks, speaker_ids)=batch
+        vertice_predictions = self.model.forward(audio,vertices_masks
+                                                 )
+        vertice_predictions=vertice_predictions+template
         # render predict vertices
         vertice_predictions = vertice_predictions.cpu().numpy()[0]
 
         input_audio_path = os.path.join(cfg.path.wav, filenames[0])
         file_type = input_audio_path.split('/')[-1].split('.')[0]
         render_sequence_meshes(
-            input_audio_path, vertice_predictions, self.template_mesh, cfg.save_path, file_type=file_type + '+pred',
+            input_audio_path, vertice_predictions, self.model.template_mesh, cfg.save_path, file_type=file_type + '_pred',
             ft=None,
             vt=None,
             tex_img=None
@@ -181,10 +182,15 @@ class MamlTrainer(LightningModule):
 
         # render gt vertices
         render_sequence_meshes(
-            input_audio_path, vertice.cpu().numpy()[0], self.template_mesh, cfg.save_path,
-            file_type=file_type + '_gt_regenerated', ft=None,
+            input_audio_path, vertice.cpu().numpy()[0], self.model.template_mesh, cfg.save_path,
+            file_type=file_type + '_gt', ft=None,
             vt=None, tex_img=None,
         )
+        pred_file=os.path.join(cfg.save_path,file_type+'_pred.mp4')
+        generated_file=os.path.join(cfg.save_path,file_type+'_gt.mp4')
+        save_file=os.path.join(cfg.save_path,file_type+'_comb.mp4')
+        os.system(f"ffmpeg -i {generated_file}-i {pred_file} -filter_complex '[0:0] [0:1] [1:0] [1:1] [2:0] [2:1] concat=n=3:v=1:a=1 [v] [a]' -map '[v]' -map '[a]’ {save_file}")
+
 
         return vertice_predictions
 

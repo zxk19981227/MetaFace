@@ -12,7 +12,7 @@ from dataloader.dataset_utils import TaskBatchSampler
 
 
 from config import cfg
-from utils import check_path_valid, get_data_path
+from utils import check_path_valid, get_data_path, collate_fn
 
 
 class AudioDataset(Dataset):
@@ -101,7 +101,7 @@ class AudioDataset(Dataset):
         else:
             speaker_id = self.speaker_dict[speaker]
         template = self.templates[subject_id]
-        return torch.from_numpy(audio),torch.from_numpy(vertice), torch.from_numpy(template),speaker_id
+        return torch.from_numpy(audio),torch.from_numpy(vertice), torch.from_numpy(template),speaker_id,file_name
 
 def get_dataloaders(batch_size=1):
     dataloaders = {}
@@ -122,11 +122,11 @@ def get_dataloaders(batch_size=1):
         batch_sampler=val_sampler,collate_fn=val_sampler.get_collate_fn()
     )
     test_dataset=AudioDataset('test')
-    test_sampler=TaskBatchSampler(
-            test_dataset.speaker_id, include_query=True, N_way=cfg.n_way, K_shot=cfg.k_shot, shuffle=True,batch_size=batch_size
-        )
+    # test_sampler=TaskBatchSampler(
+    #         test_dataset.speaker_id, include_query=True, N_way=cfg.n_way, K_shot=cfg.k_shot, shuffle=True,batch_size=batch_size
+    #     )
     dataloaders["test"] = DataLoader(
         dataset=test_dataset,num_workers=1,
-        batch_sampler=test_sampler,collate_fn=test_sampler.get_collate_fn()
+        collate_fn=collate_fn
     )
     return dataloaders

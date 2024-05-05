@@ -119,7 +119,7 @@ class TaskBatchSampler:
             audio_batch, vertice_batch, template_batch, speaker_batch = [], [], [], []
 
             for batch in item_list:
-                audio, vert, temp, speaker = batch
+                audio, vert, temp, speaker,_ = batch
                 audio_batch.append(audio)
                 vertice_batch.append(vert)
                 template_batch.append(temp)

@@ -11,13 +11,14 @@ from config import cfg
 
 
 
-def split_batch(audio, vertices_target, vertices_mask, person_id):
+def split_batch(audio, vertices_target, vertices_mask, person_id,template):
     support_audio, query_audio = audio.chunk(2, dim=0)
     support_vertices_gt, query_vertices_gt = vertices_target.chunk(2, dim=0)
     support_vertices_mask, query_vertices_mask = vertices_mask.chunk(2, dim=0)
     support_set_person_id, query_person_id = person_id.chunk(2, dim=0)
+    support_template, query_template= template.chunk(2, dim=0)
     return (support_audio,query_audio,support_vertices_gt,query_vertices_gt,support_vertices_mask, query_vertices_mask,
-            support_set_person_id,query_person_id)
+            support_set_person_id,query_person_id,support_template, query_template)
 
 
 def get_data_path(dataset_type='train', split=None):
@@ -40,34 +41,34 @@ def get_data_path(dataset_type='train', split=None):
     return audio_path_list, data_split, user_id_dict
 
 
-# def collate_fn(batch):
-#     audios = []
-#     vertices = []
-#     templates = []
-#     filenames = []
-#     audio_masks = []
-#     vertices_masks = []
-#     speaker_ids = []
-#     for b in batch:
-#         (audio, vertice, template, file_name, speaker_id) = b
-#         vertice_mask = mask_generation(vertice.shape[0])
-#         audios.append(audio)
-#         vertices.append(vertice)
-#         templates.append(template.reshape(-1))
-#         filenames.append(file_name)
-#         vertices_masks.append(vertice_mask)
-#         speaker_ids.append(speaker_id)
+def collate_fn(batch):
+    audios = []
+    vertices = []
+    templates = []
+    filenames = []
+    audio_masks = []
+    vertices_masks = []
+    speaker_ids = []
+    for b in batch:
+        audio, vertice, template, speaker_id,filename = b
+        vertice_mask = mask_generation(vertice.shape[0])
+        audios.append(audio)
+        vertices.append(vertice)
+        templates.append(template.reshape(-1))
+        filenames.append(filename)
+        vertices_masks.append(vertice_mask)
+        speaker_ids.append(speaker_id)
+
+    audio = pad_sequence(audios, batch_first=True)
+    vertice = pad_sequence(vertices, batch_first=True)
+    template = torch.stack(templates, dim=0)
+    vertices_masks = pad_sequence(vertices_masks, batch_first=True)
+    speaker_ids = torch.tensor(speaker_ids)
 #
-#     audio = pad_sequence(audios, batch_first=True)
-#     vertice = pad_sequence(vertices, batch_first=True)
-#     template = torch.stack(templates, dim=0)
-#     vertices_masks = pad_sequence(vertices_masks, batch_first=True)
-#     speaker_ids = torch.tensor(speaker_ids)
-#
-#     return (
-#         audio, vertice, template, filenames, audio_masks,
-#         vertices_masks, speaker_ids
-#     )
+    return (
+        audio, vertice, template, filenames,
+        vertices_masks, speaker_ids
+    )
 # Returns a collate function that converts one big tensor into a list of task-specific tensors
 # def collate_fn(item_list):
 #     # batch componments : audio,vertice,template,speaker_id

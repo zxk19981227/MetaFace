@@ -12,6 +12,7 @@ from model import MamlTalk
 from torch import nn
 from render_utils import render_sequence_meshes
 from utils import split_batch, length_same
+from utils import mse_computation
 
 
 # Temporal Bias, brrowed from https://github.com/EvelynFan/FaceFormer/blob/main/faceformer.py
@@ -41,12 +42,6 @@ class MamlTrainer(LightningModule):
         scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[140, 180], gamma=0.1)
         return [optimizer], [scheduler]
 
-
-
-
-
-
-
     def adapt_few_shot(self, support_audios, support_vertice_mask, support_vertice, support_template):
 
         #  这里原本是说，输入一个文本以后把这个support和targets的protype进行分类，但是实际做regression任务并且不实用prototype时候这里完全没有用
@@ -74,6 +69,30 @@ class MamlTrainer(LightningModule):
 
         return local_model
 
+    def test_step(self, batch, batch_idx):
+        # vertice_predictions, vertices, vertice_mask, match_vertice = self.get_self_prediction(batch)
+        (audio, vertices, template, filenames,
+         vertices_mask, speaker_ids) = batch
+        vertice_predictions = self.model.forward(audio, vertices_mask
+                                                 )
+        self.loss_function(
+            vertice_predictions, vertices, vertice_mask=vertices_mask, process='test'
+
+        )
+        batch_size = vertices.shape[0]
+        motion_stds = []
+        lip_dis_mouth_max = []
+        for i in range(batch_size):
+            vertice, vertice_prediction, vertice_ma = vertices[i], vertice_predictions[i], vertices_mask[i]
+            motion_std_difference, L2_dis_mouth_max = mse_computation(vertice, vertice_prediction, self.model.upper_map,
+                                                                      self.model.mouth_map, vertice_ma)
+            motion_stds.append(motion_std_difference)
+            lip_dis_mouth_max.append(L2_dis_mouth_max.cpu())
+        self.log("motion_std_difference", np.mean(np.stack(motion_stds, axis=0)).item(), prog_bar=True,
+                 batch_size=vertices.shape[0])
+        self.lip_vertice_mapper.extend(lip_dis_mouth_max)
+        self.log("lip_dis_mouth_max", torch.mean(torch.concatenate(lip_dis_mouth_max, dim=0)).cpu().item(),
+                 prog_bar=True, batch_size=vertices.shape[0])
     def outer_loop(self, batch, mode="train"):
         accuracies = []
         losses = []

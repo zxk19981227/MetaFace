@@ -30,15 +30,23 @@ def get_data_path(dataset_type='train', split=None):
                   'val': [i for i in cfg.train.val_subjects.split(" ") if i != ''],
                   "test": [i for i in cfg.train.test_subjects.split(" ") if i != '']}
     existing_dataset_id = data_split[dataset_type]
-    audio_path_list = [i for i in audio_list if
+    audio_path_list = [
+        i for i in audio_list if
                        '_'.join(i.split('_')[:-1]) in existing_dataset_id and int(i.split(".")[0][-2:]) in split[
-                           dataset_type]]
+                           dataset_type]
+                       ]
     user_id_dict = {}
-    for part in data_split.keys():
-        for speaker in data_split[part]:
-            if speaker not in user_id_dict.keys():
-                user_id_dict[speaker] = len(user_id_dict.keys())
-    return audio_path_list, data_split, user_id_dict
+    for audio in audio_path_list:
+        speaker_name='_'.join(audio.split('_')[:-1])
+        if speaker_name not in user_id_dict.keys():
+            user_id_dict[speaker_name]=[audio]
+        else :
+            user_id_dict[speaker_name].append(audio)
+    speaker_id_dict={}
+    for speaker in data_split[dataset_type]:
+        if speaker not in speaker_id_dict.keys():
+            speaker_id_dict[speaker] = len(speaker_id_dict.keys())
+    return audio_path_list, data_split, speaker_id_dict
 
 
 def collate_fn(batch):
@@ -98,7 +106,7 @@ def check_path_valid(audio_path, vertices_path):
     else:
         return False
 
-
+3
 def mask_generation(length):
     feature_length = torch.ones(length)
     return feature_length
@@ -125,7 +133,7 @@ def mse_computation(vertice_gt, vertice_pred, upper_map, mouth_map, vertice_mask
     # face_template = cfg.template
     pred_length = vertice_pred.shape[0]
     gt_length = vertice_gt.shape[0]
-    vertice_mask_len = int(sum(vertice_mask).item())
+    vertice_mask_len = int(torch.sum(vertice_mask).item())
     max_length = min(min(pred_length, gt_length), vertice_mask_len)
     vertices_pred = vertice_pred[:max_length].view(-1, 5023, 3)
     vertices_gt = vertice_gt[:max_length].view(-1, 5023, 3)

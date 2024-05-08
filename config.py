@@ -9,10 +9,12 @@ cfg.dataset = 'vocaset'
 cfg.backbone = 'hubert'
 cfg.use_pregenerated_feature = False
 cfg.audio_fps = 50
+cfg.finetune_step=100
 cfg.video_fps = 30
 cfg.feature_dim = 512
 cfg.vertice_dim = 5023 * 3
 cfg.min_threshold=0.9
+cfg.finetune_lr=1e-5
 
 cfg.device = 'cuda'
 cfg.lr = 1e-4

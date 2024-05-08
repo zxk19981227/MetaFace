@@ -157,48 +157,5 @@ def render_sequence_meshes(
     cmd = ('ffmpeg -i {0} -i {1} -c:v copy -c:a aac -y {2}'.format(
         video_fname_pred, audio_path, video_audio_fname_pred).split()
            )
-    print(cmd)
+
     call(cmd)
-#
-#
-# def main():
-#     parser = argparse.ArgumentParser(
-#         description='SelfTalk: A Self-Supervised Commutative Training Diagram to Comprehend 3D Talking Faces')
-#     parser.add_argument('--cfg', type=str, help='path to config path')
-#     parser.add_argument("--render_template_path", type=str, default="templates",
-#                         help='path of the mesh in FLAME/BIWI topology')
-#     parser.add_argument('--background_black', type=bool, default=True, help='whether to use black background')
-#     parser.add_argument('--fps', type=int, default=30, help='frame rate - 30 for vocaset; 25 for BIWI')
-#
-#     parser.add_argument('--template', type=str, default='')
-#     parser.add_argument("--save_path", type=str, default="visualize_result", help='path of the predictions')
-#     args = parser.parse_args()
-#     cfg.merge_from_file(args.cfg)
-#     output_path = args.save_path
-#
-#     os.makedirs(output_path)
-#     dataloader = get_dataloaders()['test']
-#
-#     for idx, batch in enumerate(dataloader):
-#         model = MabaTalk.load_from_checkpoint(args.checkpoint)
-#
-#         if cfg.dataset == "BIWI":
-#             template_file = os.path.join(args.dataset, args.render_template_path, "BIWI.ply")
-#         elif cfg.dataset == "vocaset":
-#             template_file = os.path.join(args.dataset, args.render_template_path, "FLAME_sample.ply")
-#         else:
-#             raise NotImplementedError
-#
-#         template = Mesh(filename=template_file)
-#         vt, ft = None, None
-#         tex_img = None
-#
-#         predicted_vertices = np.load(predicted_vertices_path)
-#         predicted_vertices = np.reshape(predicted_vertices, (-1, args.vertice_dim // 3, 3))
-#
-#         render_sequence_meshes(args, predicted_vertices, template, output_path, predicted_vertices_path, vt, ft,
-#                                tex_img)
-#
-#
-# if __name__ == "__main__":
-#     main()

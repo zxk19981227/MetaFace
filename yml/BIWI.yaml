@@ -1,0 +1,17 @@
+dataset: BIWI
+Experimets:
+  MAX_EPOCH: 200
+  TYPE: Adam
+  BASE_LR: 0.0001
+  GAMMA: 0.1
+  STEPS: [0]
+  EPOCHS: [0]
+
+LOSS:
+  LOSS_Lip_W: 1000.0
+  LOSS_Sync_W: 1000.0
+
+train:
+  train_subjects: "F2 F3 F4 M3 M4 M5"
+  val_subjects: "F2 F3 F4 M3 M4 M5"
+  test_subjects: "F2 F3 F4 M3 M4 M5"

@@ -8,6 +8,7 @@ import torch
 from trainer import MamlTrainer
 import numpy as np
 from tqdm import tqdm
+from args import get_args
 
 
 def TrainSingleSample(trainer):
@@ -74,7 +75,10 @@ def TrainSingleSample(trainer):
     print(f"mean total std is {np.mean(total_diff)}")
 
 if __name__=="__main__":
-    model=MamlTrainer.load_from_checkpoint('/data3/zhouxukun/mamlface/result/pretrainedNone_crosstrainFalse_usetransformerFalse_backbonehubert_0.0001lr_1batch_size_vocasetdataset_512feature_dim_15069vertice_dimFalsefreeze_audio_/version_1/checkpoints/epoch=929-valid_total_loss=0.0003739640.ckpt')
+    model = MamlTrainer.load_from_checkpoint('/data3/zhouxukun/mamlface/result/NORMAL/pretrainedNone_crosstrainFalse_usetransformerFalse_backbonewav2vec_0.0001lr_1batch_size_vocasetdataset_512feature_dim_15069vertice_dimFalsefreeze_audio_/version_1/checkpoints/epoch=529-valid_total_loss=0.0003267751.ckpt')
+
+    #.load_from_checkpoint(
+   #     '/data3/zhouxukun/mamlface/result/pretrainedNone_crosstrainFalse_usetransformerFalse_backbonehubert_0.0001lr_1batch_size_vocasetdataset_512feature_dim_15069vertice_dimFalsefreeze_audio_/version_1/checkpoints/epoch=929-valid_total_loss=0.0003739640.ckpt')
     TrainSingleSample(model
                       )
 

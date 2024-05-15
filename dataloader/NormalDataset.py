@@ -13,7 +13,7 @@ from utils import collate_fn
 from utils import get_data_path, check_path_valid
 
 
-class TestDataset(Dataset):
+class NormalDataset(Dataset):
     def __init__(self, data_type='test'):
         super().__init__()
         self.dataset_name = cfg.dataset
@@ -71,9 +71,10 @@ class TestDataset(Dataset):
             speech_array = sampler(speech_array)
             input_values = np.squeeze(self.processor(speech_array, sampling_rate=16000).input_values)
         return input_values
+    def __len__(self):
+        return len(self.data)
     def __getitem__(self, item_idx):
-        item_idx,speaker_id=item_idx
-        file_name = self.person_file_dict[speaker_id][item_idx]
+        file_name = self.data[item_idx]
 
         subject_id = '_'.join(file_name.split('_')[:-1])
         vertices_name = file_name.replace('wav', 'npy')
@@ -90,6 +91,6 @@ class TestDataset(Dataset):
             raise NotImplementedError('dataset{} not implemented'.format(self.dataset_name))
 
         template = self.templates[subject_id]
-        return torch.from_numpy(audio), torch.from_numpy(vertice), torch.from_numpy(template), speaker_id, file_name
-def getTestDataset(usage='test'):
-    return TestDataset(usage)
+        return torch.from_numpy(audio), torch.from_numpy(vertice), torch.from_numpy(template), 0, file_name
+def getNormalDataset(usage):
+    return DataLoader(NormalDataset(usage),collate_fn=collate_fn,batch_size=cfg.batch_size)

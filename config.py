@@ -22,7 +22,7 @@ cfg.batch_size = 1
 cfg.max_epoch = cfg.batch_size * 100
 cfg.cross_train = False
 cfg.same_person=False
-cfg.save_path='/data3/zhouxukun/visual_talkface'
+cfg.save_path='/data3/zhouxukun/visual_talkface_small_path'
 
 cfg.path = CN(new_allowed=True)
 cfg.path.project = '/data3/zhouxukun/mamlface'
@@ -33,9 +33,9 @@ cfg.path.wav2phonem='/data3/zhouxukun/transformer_model/wav2vec2phoneme/'
 cfg.path.phoneme='/data3/zhouxukun/mamlface/vocaset/phonome/fps30'
 cfg.path.visualize='/data3/zhouxukun/mamlface/vis/'
 
-cfg.path.save = '/data3/zhouxukun/mamlface/result/vocaset'
+cfg.path.save = os.path.join(cfg.path.project, 'result',cfg.dataset)
 cfg.path.wav = os.path.join(cfg.path.project, cfg.dataset, 'wav')
-cfg.path.save = os.path.join(cfg.path.project, cfg.dataset, 'result')
+cfg.path.save = os.path.join(cfg.path.project, cfg.dataset, 'result','NORMAL')
 cfg.path.vertices = os.path.join(cfg.path.project, cfg.dataset, 'vertices_npy')
 cfg.path.audio_feature = os.path.join(cfg.path.project, cfg.dataset, cfg.backbone)
 cfg.path.template = os.path.join(cfg.path.project, cfg.dataset, 'templates.pkl')

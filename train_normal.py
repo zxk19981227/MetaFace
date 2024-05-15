@@ -27,7 +27,7 @@ def main(paraser_args):
         filename='{epoch}-{valid_total_loss:.10f}',monitor='valid_total_loss', mode='min', save_top_k=3)
     trainer = pl.Trainer(
         max_epochs=1000, logger=logger , log_every_n_steps=1, check_val_every_n_epoch=1, callbacks=[checkpoint_callback],)
-    trainer.fit(model, train_dataloaders=getNormalDataset('train'), val_dataloaders=getNormalDataset['val'])
+    trainer.fit(model, train_dataloaders=getNormalDataset('train'), val_dataloaders=getNormalDataset('val'))
 
 
 if __name__ == '__main__':

@@ -1,5 +1,6 @@
 import copy
 
+from args import get_args
 from utils import mse_computation, length_same
 from dataloader.retrain_dataloader import getTestDataset
 from config import cfg
@@ -7,8 +8,6 @@ from torch.optim import Adam
 import torch
 from trainer import MamlTrainer
 import numpy as np
-from tqdm import tqdm
-from args import get_args
 from minlora import add_lora, apply_to_lora, disable_lora, enable_lora, get_lora_params, merge_lora, name_is_lora, remove_lora, load_multiple_lora, select_lora
 
 
@@ -19,14 +18,25 @@ def TrainSingleSample(trainer):
     total_lip_vertice_max=[]
     for speaker in sample_dict.keys():
         for sample_idx in range(len(sample_dict[speaker])):
-            model=copy.deepcopy(trainer.model)
+            model=copy.deepcopy(trainer.model).cpu()
+            total = sum([param.nelement() for param in model.parameters()])
+            print(f'total param for pre is {total/1e6}')
             device='cuda'
-            add_lora(model)
+            # add_lora(model)
+            # model.add_remap()
+
+            model=model.cuda()
+            refined_params=[]
+            for name,param in model.named_parameters():
+                if 'vertice_remap' in name:
+                    refined_params.append(param)
+
             parameters = [
-                {"params": list(get_lora_params(model))},
+                {"params": list(get_lora_params(model))+refined_params},
             ]
-            optimizer = torch.optim.AdamW(parameters, lr=1e-5)
-            # optimizer = Adam(model.parameters(), lr=cfg.finetune_lr)
+
+            # optimizer = torch.optim.AdamW(parameters, lr=1e-5)
+            optimizer = Adam(parameters, lr=cfg.finetune_lr)
 
             for i in range(cfg.finetune_step):
                 optimizer.zero_grad()
@@ -37,8 +47,10 @@ def TrainSingleSample(trainer):
                 temp=temp.to(device).unsqueeze(0)
 
                 vertice_mask=torch.ones(vertice.shape[:2]).to(device)
-
-                predict=model(audio,vertice_mask)
+                if model.neural_process:
+                    predict,_=model(audio,vertice_mask)
+                else:
+                    predict=model(audio,vertice_mask)
                 vertice, vertice_prediction = length_same(vertice, predict)
 
                 template=temp.view(temp.shape[0],1,-1)
@@ -80,12 +92,17 @@ def TrainSingleSample(trainer):
     print(f"mean total std is {np.mean(total_diff)}")
 
 if __name__=="__main__":
-    model = MamlTrainer.load_from_checkpoint('/data3/zhouxukun/mamlface/result/NORMAL/pretrainedNone_crosstrainFalse_usetransformerFalse_backbonewav2vec_0.0001lr_1batch_size_vocasetdataset_512feature_dim_15069vertice_dimFalsefreeze_audio_/version_1/checkpoints/epoch=529-valid_total_loss=0.0003267751.ckpt')
-
+    args = get_args()
+    config_file = args.cfg
+    cfg.merge_from_file(config_file)
+    model = MamlTrainer.load_from_checkpoint(
+    "result/pretrainedNone_crosstrainFalse_usetransformerFalse_backbonewav2vec_0.0001lr_1batch_size_vocasetdataset_512feature_dim_15069vertice_dimFalsefreeze_audio__lora/version_1/checkpoints/epoch=307-valid_total_loss=0.0003031754.ckpt"
+    )
     #.load_from_checkpoint(
    #     '/data3/zhouxukun/mamlface/result/pretrainedNone_crosstrainFalse_usetransformerFalse_backbonehubert_0.0001lr_1batch_size_vocasetdataset_512feature_dim_15069vertice_dimFalsefreeze_audio_/version_1/checkpoints/epoch=929-valid_total_loss=0.0003739640.ckpt')
-    TrainSingleSample(model
-                      )
+    TrainSingleSample(
+        model
+    )
 
 
 

@@ -22,6 +22,7 @@ class MamlTalk(Module):
         self.personal_dim = cfg.model.personal_dim
         self.backbone = cfg.backbone
         self.upper_map, self.mouth_map = self.get_upper_msk()
+        self.vertice_remap=None
 
         if not cfg.use_pregenerated_feature:
             if self.backbone.lower() == 'hubert':
@@ -50,19 +51,17 @@ class MamlTalk(Module):
         #     raise NotImplementedError
         self.audio_fps = cfg.audio_fps
         self.video_fps = cfg.video_fps
-
-        # if cfg.cross_train:
-
         self.lip_vertice_mapper = []
-
         self.motion_layer = nn.Linear(5023 * 3, cfg.feature_dim)
-        # decoder_layer = nn.TransformerDecoderLayer(d_model=cfg.feature_dim, nhead=4,
-        #                                            dim_feedforward=2 * cfg.feature_dim, batch_first=True)
         self.refer_motion_encoder = nn.TransformerDecoder(nn.TransformerDecoderLayer(
             d_model=cfg.feature_dim, nhead=4,
             dim_feedforward=2 * cfg.feature_dim,
             batch_first=True), num_layers=1
         )
+        self.neural_process=getattr(cfg,"neural_process",False)
+        if self.neural_process:
+            self.feature_remapping=nn.Linear(cfg.feature_dim,cfg.feature_dim)
+            self.feature_confusing=nn.Linear(cfg.feature_dim*2,cfg.feature_dim)
 
         decoder_layer = nn.TransformerDecoderLayer(d_model=cfg.feature_dim, nhead=4,
                                                    dim_feedforward=2 * cfg.feature_dim, batch_first=True)
@@ -76,7 +75,10 @@ class MamlTalk(Module):
 
         nn.init.constant_(self.vertice_map_r.weight, 0)
         nn.init.constant_(self.vertice_map_r.bias, 0)
-
+    def add_remap(self):
+        self.vertice_remap=nn.Linear(cfg.feature_dim,cfg.feature_dim)
+        nn.init.constant_(self.vertice_remap.weight, 0)
+        nn.init.constant_(self.vertice_remap.bias, 0)
     def get_upper_msk(self):
         pkl_path = cfg.path.pkl
         with open(pkl_path, 'rb') as f:
@@ -104,12 +106,20 @@ class MamlTalk(Module):
             hidden_states = audio  # bzs,seq,1024
         hidden_states, vertices_mask = length_same(hidden_states, vertices_mask)
         vertice_input = self.audio_feature_map(hidden_states)
+        if self.neural_process:
+            dense_feature=self.feature_remapping(vertice_input)
+            vertice_input=self.feature_confusing(torch.cat([vertice_input,dense_feature],dim=2))
         vertice_out = self.transformer_decoder(vertice_input, vertice_input, tgt_key_padding_mask=vertices_mask,
                                                memory_key_padding_mask=vertices_mask)
+        if self.vertice_remap is not None:
+            self.vertice_out=self.vertice_remap(vertice_out)
         vertice_out = self.vertice_map_r(vertice_out)
 
         vertice_out = vertice_out
-        return vertice_out
+        if self.neural_process and self.training:
+            return vertice_out,torch.softmax(torch.mean(torch.mean(dense_feature,dim=1),dim=0,keepdim=True),dim=-1)
+        else:
+            return vertice_out
 
 
 

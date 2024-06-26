@@ -13,6 +13,7 @@ from torch import nn
 from render_utils import render_sequence_meshes
 from utils import split_batch, length_same
 from utils import mse_computation
+from minlora import add_lora, apply_to_lora, disable_lora, enable_lora, get_lora_params, merge_lora, name_is_lora, remove_lora, load_multiple_lora, select_lora
 
 
 # Temporal Bias, brrowed from https://github.com/EvelynFan/FaceFormer/blob/main/faceformer.py
@@ -28,6 +29,10 @@ class MamlTrainer(LightningModule):
         self.save_hyperparameters()
         self.model = MamlTalk()
         self.mse_func = nn.MSELoss(reduction='none')
+        self.lora=cfg.lora
+        if self.lora:
+            print("using lora ")
+            add_lora(self.model)
 
     def get_self_prediction(self, batch):
         (audio, vertice, template, filenames, audio_masks,
@@ -57,7 +62,11 @@ class MamlTrainer(LightningModule):
         # Optimize inner loop model on support set
         for _ in range(self.cfg.num_inner_steps):
             # Determine loss on the support set
-            predict_vertice = local_model(support_audios, support_vertice_mask)
+            if local_model.neural_process:
+                predict_vertice,_ = local_model(support_audios, support_vertice_mask)
+            else:
+                predict_vertice = local_model(support_audios, support_vertice_mask)
+
             predict_vertice=predict_vertice+support_template
             loss=self.loss_function(predict_vertice, support_vertice, support_vertice_mask)
             # Calculate gradients and perform inner loop update
@@ -114,10 +123,18 @@ class MamlTrainer(LightningModule):
             )
             # Determine loss of query set
             # query_labels = (classes[None, :] == query_targets[:, None]).long().argmax(dim=-1)
-            pred_vertices=local_model(query_audio,query_vertice_mask)
+            if local_model.neural_process:
+                pred_vertices,query_feature=local_model(query_audio,query_vertice_mask)
+                support_vertices,support_feature=local_model(support_audio,support_vertice_mask)
+                KL_loss=torch.nn.functional.kl_div(torch.log(query_feature),support_feature)
+            else:
+                pred_vertices=local_model(query_audio,query_vertice_mask)
+                KL_loss=0
+
             query_template=query_template.view(query_template.shape[0],-1).unsqueeze(1)
             pred_vertices=pred_vertices+query_template
             loss = self.loss_function(pred_vertices, query_vertice,query_vertice_mask,mode)
+            loss=loss+KL_loss
             # Calculate gradients for query set loss
             if mode == "train":
                 loss.backward()
@@ -184,8 +201,7 @@ class MamlTrainer(LightningModule):
         # vertice_mask, match_audio_vertice,reference_audio_mask, reference_motion_mask) = batch
         (audio, vertice, template, filenames,
         vertices_masks, speaker_ids)=batch
-        vertice_predictions = self.model.forward(audio,vertices_masks
-                                                 )
+        vertice_predictions = self.model.forward(audio,vertices_masks)
         vertice_predictions=vertice_predictions+template
         # render predict vertices
         vertice_predictions = vertice_predictions.cpu().numpy()[0]

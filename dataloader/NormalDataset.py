@@ -14,8 +14,10 @@ from utils import get_data_path, check_path_valid
 
 
 class NormalDataset(Dataset):
-    def __init__(self, data_type='test'):
+    def __init__(self, data_type='test',usage=None):
         super().__init__()
+        if usage==None:
+            usage=data_type
         self.dataset_name = cfg.dataset
         self.backbone = cfg.backbone
         self.data_type = data_type
@@ -37,8 +39,10 @@ class NormalDataset(Dataset):
             )
         else:
             self.processor = None
-        self.audio_path_list, self.subjects, self.speaker_dict = get_data_path(dataset_type=data_type,
-                                                                               split=self.splits[self.dataset_name])
+        self.audio_path_list, self.subjects, self.speaker_dict = get_data_path(
+            dataset_type=data_type,
+                                                                               split=self.splits[self.dataset_name][usage]
+                                                                               )
         self.audio_path = cfg.path.wav
         self.vertices_path = cfg.path.vertices
         self.template_file = cfg.path.template

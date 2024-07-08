@@ -128,6 +128,12 @@ if __name__ == '__main__':
         plt.title('Minimum distance: {}, window widht: {}, slope weight: {}'.format(dist, w, s))
     plt.show()
 
+def distance_face(x,y):
+    x=x.view(-1,3)
+    y=y.view(-1,3)
+    distance_x_y=torch.sum((x-y)**2,dim=-1)
+    distance_x_y=torch.mean(distance_x_y)
+    return distance_x_y
 class Metric:
     def __init__(self):
         self.l2_function=F.mse_loss
@@ -167,7 +173,7 @@ class Metric:
         target_mesh_sequence=target_mesh_sequence*1000
         dtw_loss,_,_,_=dtw(
             input_mesh_sequence.view(pose_length,-1,3).cpu(),target_mesh_sequence.view(pose_length,-1 ,3).cpu(),
-            dist=euclidean_distances
+            dist=distance_face
                            )
         return  dtw_loss
     def lip_max_l2(self, lip_predict, lip_real):
@@ -222,9 +228,8 @@ def get_data_path(dataset_type='train', split=None):
     existing_dataset_id = data_split[dataset_type]
     audio_path_list = [
         i for i in audio_list if
-                       '_'.join(i.split('_')[:-1]) in existing_dataset_id and int(i.split(".")[0][-2:]) in split[
-                           dataset_type]
-                       ]
+                       '_'.join(i.split('_')[:-1]) in existing_dataset_id and int(i.split(".")[0][-2:]) in split
+                    ]
     user_id_dict = {}
     for audio in audio_path_list:
         speaker_name='_'.join(audio.split('_')[:-1])
@@ -324,9 +329,10 @@ def mse_computation(vertice_gt, vertice_pred, upper_map, mouth_map, vertice_mask
     pred_length = vertice_pred.shape[0]
     gt_length = vertice_gt.shape[0]
     vertice_mask_len = int(torch.sum(vertice_mask).item())
+
     max_length = min(min(pred_length, gt_length), vertice_mask_len)
-    vertices_pred = vertice_pred[:max_length].view(-1, 5023, 3)
-    vertices_gt = vertice_gt[:max_length].view(-1, 5023, 3)
+    vertices_pred = vertice_pred[:max_length].view(max_length, -1, 3)
+    vertices_gt = vertice_gt[:max_length].view(max_length, -1, 3)
 
     gt_motion_std = get_vertice_std(vertices_gt.cpu().numpy(), upper_map)
     pred_motion_std = get_vertice_std(vertices_pred.cpu().numpy(), upper_map)

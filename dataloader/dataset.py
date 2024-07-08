@@ -16,8 +16,10 @@ from utils import check_path_valid, get_data_path, collate_fn
 
 
 class AudioDataset(Dataset):
-    def __init__(self, data_type):
+    def __init__(self, data_type,usage=None):
         super().__init__()
+        if usage==None:
+            usage=data_type
         self.dataset_name = cfg.dataset
         self.backbone = cfg.backbone
         self.data_type = data_type
@@ -38,12 +40,14 @@ class AudioDataset(Dataset):
             )
         else:
             self.processor = None
-        self.audio_path_list, self.subjects, self.speaker_dict = get_data_path(dataset_type=data_type,
-                                                                               split=self.splits[self.dataset_name])
+        self.audio_path_list, self.subjects, self.speaker_dict = get_data_path(
+            dataset_type=data_type,
+            split=self.splits[self.dataset_name][data_type]
+        )
         self.audio_path = cfg.path.wav
         self.vertices_path = cfg.path.vertices
         self.template_file = cfg.path.template
-        self.sentences_id = self.splits[self.dataset_name]
+        # self.sentences_id = self.splits[self.dataset_name]
 
         # group file by speaker
         self.person_file_dict = {}
@@ -62,8 +66,9 @@ class AudioDataset(Dataset):
                 self.person_file_dict[subject_id].append(file.replace("wav", "npy"))
         for file in self.data:
             user_name = '_'.join(file.split('_')[:4])
-            if user_name not in self.person_file_dict:
-                self.person_file_dict[user_name] = len(self.person_file_dict)
+            if user_name not in self.speaker_dict:
+                self.speaker_dict[user_name] = len(self.speaker_dict)
+                raise NotImplementedError
         self.speaker_id=torch.from_numpy(np.array(self.speaker_id))
         self.len = len(self.data)
 

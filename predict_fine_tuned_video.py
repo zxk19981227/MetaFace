@@ -63,13 +63,13 @@ def TrainSingleSample(trainer):
 
         motion_stds.append(motion_std_difference)
         lip_dis_mouth_max.append(L2_dis_mouth_max.cpu())
-        print(vertice_prediction.shape)
+        # print(vertice_prediction.shape)
         render_sequence_meshes(
             audio_path=os.path.join(cfg.path.wav,file_name),sequence_vertices=vertice_prediction.cpu().numpy()[0],
             template=model.template_mesh, out_path=cfg.save_path,
             file_type=file_name.replace('.mp4','') + '_pred', ft=None,
             vt=None, tex_img=None,
-                               )
+        )
         render_sequence_meshes(
             audio_path=os.path.join(cfg.path.wav,file_name),sequence_vertices=vertice.cpu().numpy()[0],
             template=model.template_mesh, out_path=cfg.save_path,

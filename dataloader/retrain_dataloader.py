@@ -14,7 +14,7 @@ from utils import get_data_path, check_path_valid
 
 
 class TestDataset(Dataset):
-    def __init__(self, data_type='test'):
+    def __init__(self, data_type='test',usage=None):
         super().__init__()
         self.dataset_name = cfg.dataset
         self.backbone = cfg.backbone
@@ -22,6 +22,8 @@ class TestDataset(Dataset):
         self.splits = {'vocaset': {'train': range(1, 41), 'val': range(21, 41), 'test': range(21, 41)},
                        'BIWI': {'train': range(1, 33), 'val': range(33, 37), 'test': range(37, 41)}}
         self.data = []
+        if usage is None:
+            usage=data_type
         self.speaker_id=[]
 
         if not cfg.use_pregenerated_feature:
@@ -37,8 +39,10 @@ class TestDataset(Dataset):
             )
         else:
             self.processor = None
-        self.audio_path_list, self.subjects, self.speaker_dict = get_data_path(dataset_type=data_type,
-                                                                               split=self.splits[self.dataset_name])
+        self.audio_path_list, self.subjects, self.speaker_dict = get_data_path(
+            dataset_type=data_type,
+            split=self.splits[self.dataset_name][usage]
+        )
         self.audio_path = cfg.path.wav
         self.vertices_path = cfg.path.vertices
         self.template_file = cfg.path.template
@@ -91,5 +95,5 @@ class TestDataset(Dataset):
 
         template = self.templates[subject_id]
         return torch.from_numpy(audio), torch.from_numpy(vertice), torch.from_numpy(template), speaker_id, file_name
-def getTestDataset(usage='test'):
-    return TestDataset(usage)
+def getTestDataset(data_type='test',usage=None):
+    return TestDataset(data_type,usage)

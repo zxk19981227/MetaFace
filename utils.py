@@ -7,7 +7,197 @@ import torchaudio
 from torch.nn.utils.rnn import pad_sequence
 
 from config import cfg
+from numpy import array, zeros, full, argmin, inf, ndim
+from scipy.spatial.distance import cdist
+from math import isinf
+import pickle
+from sklearn.metrics.pairwise import euclidean_distances
+def update_cfg(cfg):
+    cfg.path.save = os.path.join(cfg.path.project, 'result', cfg.dataset)
+    cfg.path.wav = os.path.join(cfg.path.project, cfg.dataset, 'wav')
+    cfg.path.save = os.path.join(cfg.path.project, cfg.dataset, 'result', 'NORMAL')
+    cfg.path.vertices = os.path.join(cfg.path.project, cfg.dataset, 'vertices_npy')
+    cfg.path.audio_feature = os.path.join(cfg.path.project, cfg.dataset, cfg.backbone)
+    cfg.path.template = os.path.join(cfg.path.project, cfg.dataset, 'templates.pkl')
+    cfg.path.render_template = os.path.join(cfg.path.project, cfg.dataset, 'FLAME_sample.ply')
+    cfg.path.pkl = os.path.join(cfg.path.project, cfg.dataset, 'FLAME_masks.pkl')
+    cfg.path.ctc = os.path.join(cfg.path.project, cfg.dataset, 'ctc')
+    cfg.path.dataset = os.path.join(cfg.path.project, cfg.dataset)
+    return cfg
 
+def dtw(x, y, dist, warp=1, w=inf, s=1.0):
+    """
+    Computes Dynamic Time Warping (DTW) of two sequences.
+
+    :param array x: N1*M array
+    :param array y: N2*M array
+    :param func dist: distance used as cost measure
+    :param int warp: how many shifts are computed.
+    :param int w: window size limiting the maximal distance between indices of matched entries |i,j|.
+    :param float s: weight applied on off-diagonal moves of the path. As s gets larger, the warping path is increasingly biased towards the diagonal
+    Returns the minimum distance, the cost matrix, the accumulated cost matrix, and the wrap path.
+    """
+    assert len(x)
+    assert len(y)
+    assert isinf(w) or (w >= abs(len(x) - len(y)))
+    assert s > 0
+    r, c = len(x), len(y)
+    if not isinf(w):
+        D0 = full((r + 1, c + 1), inf)
+        for i in range(1, r + 1):
+            D0[i, max(1, i - w):min(c + 1, i + w + 1)] = 0
+        D0[0, 0] = 0
+    else:
+        D0 = zeros((r + 1, c + 1))
+        D0[0, 1:] = inf
+        D0[1:, 0] = inf
+    D1 = D0[1:, 1:]  # view
+    for i in range(r):
+        for j in range(c):
+            if (isinf(w) or (max(0, i - w) <= j <= min(c, i + w))):
+
+                D1[i, j] = np.mean(dist(x[i], y[j]))
+    C = D1.copy()
+    jrange = range(c)
+    for i in range(r):
+        if not isinf(w):
+            jrange = range(max(0, i - w), min(c, i + w + 1))
+        for j in jrange:
+            min_list = [D0[i, j]]
+            for k in range(1, warp + 1):
+                i_k = min(i + k, r)
+                j_k = min(j + k, c)
+                min_list += [D0[i_k, j] * s, D0[i, j_k] * s]
+            D1[i, j] += min(min_list)
+    if len(x) == 1:
+        path = zeros(len(y)), range(len(y))
+    elif len(y) == 1:
+        path = range(len(x)), zeros(len(x))
+    else:
+        path = _traceback(D0)
+    return D1[-1, -1], C, D1, path
+
+
+def _traceback(D):
+    i, j = array(D.shape) - 2
+    p, q = [i], [j]
+    while (i > 0) or (j > 0):
+        tb = argmin((D[i, j], D[i, j + 1], D[i + 1, j]))
+        if tb == 0:
+            i -= 1
+            j -= 1
+        elif tb == 1:
+            i -= 1
+        else:  # (tb == 2):
+            j -= 1
+        p.insert(0, i)
+        q.insert(0, j)
+    return array(p), array(q)
+
+
+if __name__ == '__main__':
+    w = inf
+    s = 1.0
+    if 1:  # 1-D numeric
+        from sklearn.metrics.pairwise import manhattan_distances
+        x = [0, 0, 1, 1, 2, 4, 2, 1, 2, 0]
+        y = [1, 1, 1, 2, 2, 2, 2, 3, 2, 0]
+        dist_fun = manhattan_distances
+        w = 1
+        # s = 1.2
+    elif 0:  # 2-D numeric
+        from sklearn.metrics.pairwise import euclidean_distances
+        x = [[0, 0], [0, 1], [1, 1], [1, 2], [2, 2], [4, 3], [2, 3], [1, 1], [2, 2], [0, 1]]
+        y = [[1, 0], [1, 1], [1, 1], [2, 1], [4, 3], [4, 3], [2, 3], [3, 1], [1, 2], [1, 0]]
+        dist_fun = euclidean_distances
+
+    dist, cost, acc, path = dtw(x, y, dist_fun, w=w, s=s)
+
+    # Vizualize
+    from matplotlib import pyplot as plt
+    plt.imshow(cost.T, origin='lower', cmap=plt.cm.Reds, interpolation='nearest')
+    plt.plot(path[0], path[1], '-o')  # relation
+    plt.xticks(range(len(x)), x)
+    plt.yticks(range(len(y)), y)
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.axis('tight')
+    if isinf(w):
+        plt.title('Minimum distance: {}, slope weight: {}'.format(dist, s))
+    else:
+        plt.title('Minimum distance: {}, window widht: {}, slope weight: {}'.format(dist, w, s))
+    plt.show()
+
+class Metric:
+    def __init__(self):
+        self.l2_function=F.mse_loss
+        with open('pkls/FLAME_masks.pkl','rb') as f:
+            self.lip_mask = pickle.load(f,encoding='latin1')["lips"]
+            
+    # def lip_sync(self,input_mesh_sequence,target_mesh_sequence):
+    #     """
+    #     shape for sequence: (seq_len,5023,3)
+    #     """
+    #     assert input_mesh_sequence.shape==target_mesh_sequence
+    #     mse_loss=self.l2_function(input_mesh_sequence,target_mesh_sequence,reduction='none')
+    #     lip_sync_loss=torch.sum(mse_loss,dim=2)
+    #     lip_sync_loss=torch.max(lip_sync_loss,dim=1)
+    #     return lip_sync_loss
+    def l2_face(self,lip_predict,lip_real):
+        # l2_face=self.l2_function(input_mesh_sequence,target_mesh_sequence,reduction='none')
+        seq_len=lip_predict.shape[0]
+        pred_verts_mm = lip_predict.view(seq_len, -1, 3) * 1000.0
+        gt_verts_mm = lip_real.view(seq_len, -1, 3) * 1000.0
+
+        diff_in_mm = pred_verts_mm - gt_verts_mm
+        l2_dist_in_mm = torch.sqrt(torch.sum(diff_in_mm ** 2, dim=-1))
+        # max_l2_error_lip_vert, idx = torch.mean(l2_dist_in_mm, dim=-1)
+        mean_max_l2_error_face_vert = torch.mean(l2_dist_in_mm )
+        return  mean_max_l2_error_face_vert
+    def dtw_lip(self,input_mesh_sequence,target_mesh_sequence):
+        pose_length=input_mesh_sequence.shape[0]
+        # print(f"shape for lip is {input_mesh_sequence.shape}")
+        # print(self.lip_mask)
+        # print(f"shape for input_mesh_sequence is {input_mesh_sequence.shape}")
+        input_mesh_sequence=input_mesh_sequence[:,self.lip_mask]
+
+        # print(f"shape for input_mesh_sequence is {input_mesh_sequence.shape}")
+        target_mesh_sequence=target_mesh_sequence[:,self.lip_mask]
+        input_mesh_sequence=input_mesh_sequence*1000
+        target_mesh_sequence=target_mesh_sequence*1000
+        dtw_loss,_,_,_=dtw(
+            input_mesh_sequence.view(pose_length,-1,3).cpu(),target_mesh_sequence.view(pose_length,-1 ,3).cpu(),
+            dist=euclidean_distances
+                           )
+        return  dtw_loss
+    def lip_max_l2(self, lip_predict, lip_real):
+        """
+        This is the lip sync metric used in the faceformer paper
+        """
+        # mask = mask.to(real.device)
+        # lip_pred = predict * mask
+        # lip_real = real * mask
+        seq_len=lip_predict.shape[0]
+        pred_verts_mm = lip_predict.view(seq_len, -1, 3) * 1000.0
+        gt_verts_mm = lip_real.view(seq_len, -1, 3) * 1000.0
+
+        diff_in_mm = pred_verts_mm - gt_verts_mm
+        l2_dist_in_mm = torch.sqrt(torch.sum(diff_in_mm ** 2, dim=-1))
+        max_l2_error_lip_vert, idx = torch.max(l2_dist_in_mm, dim=-1)
+        mean_max_l2_error_lip_vert = torch.mean(max_l2_error_lip_vert)
+        return mean_max_l2_error_lip_vert
+    def l2_lip(self,lip_predict,lip_real):
+        seq_len=lip_predict.shape[0]
+        pred_verts_mm = lip_predict.view(seq_len, -1, 3) * 1000.0
+        gt_verts_mm = lip_real.view(seq_len, -1, 3) * 1000.0
+
+        diff_in_mm = pred_verts_mm - gt_verts_mm
+        l2_dist_in_mm = torch.sqrt(torch.sum(diff_in_mm ** 2, dim=-1))[:,self.lip_mask]
+        # max_l2_error_lip_vert, idx = torch.mean(l2_dist_in_mm, dim=-1)
+        mean_max_l2_error_lip_vert = torch.mean(l2_dist_in_mm)
+        return mean_max_l2_error_lip_vert
+        
+        
 
 
 

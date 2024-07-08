@@ -95,7 +95,10 @@ class AudioDataset(Dataset):
 
         else:
             raise NotImplementedError('dataset{} not implemented'.format(self.dataset_name))
-        speaker = '_'.join(vertices_name.split('_')[:4])
+        if cfg.dataset=='vocaset':
+            speaker = '_'.join(vertices_name.split('_')[:4])
+        elif cfg.dataset=='BIWI':
+            speaker = vertices_name.split('_')[0]
         if speaker not in self.speaker_dict.keys():
             raise NotImplementedError(f'{speaker} not exists in {self.speaker_dict.keys()} ')
         else:

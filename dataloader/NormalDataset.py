@@ -86,7 +86,6 @@ class NormalDataset(Dataset):
 
         elif self.dataset_name == "BIWI":
             vertice = np.load(vertices_path, allow_pickle=True)
-
         else:
             raise NotImplementedError('dataset{} not implemented'.format(self.dataset_name))
 

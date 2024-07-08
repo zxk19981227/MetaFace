@@ -40,9 +40,10 @@ cfg.path.save = os.path.join(cfg.path.project, cfg.dataset, 'result','NORMAL')
 cfg.path.vertices = os.path.join(cfg.path.project, cfg.dataset, 'vertices_npy')
 cfg.path.audio_feature = os.path.join(cfg.path.project, cfg.dataset, cfg.backbone)
 cfg.path.template = os.path.join(cfg.path.project, cfg.dataset, 'templates.pkl')
-cfg.path.render_template = os.path.join(cfg.path.project, cfg.dataset, 'templates/FLAME_sample.ply')
+cfg.path.render_template = os.path.join(cfg.path.project, cfg.dataset, 'FLAME_sample.ply')
 cfg.path.pkl = os.path.join(cfg.path.project, cfg.dataset, 'FLAME_masks.pkl')
 cfg.path.ctc=os.path.join(cfg.path.project, cfg.dataset,'ctc')
+cfg.path.dataset=os.path.join(cfg.path.project,cfg.dataset)
 
 cfg.model = CN(new_allowed=True)
 cfg.model.freeze_audio = False
@@ -72,4 +73,4 @@ cfg.train.val_subjects = "FaceTalk_170811_03275_TA FaceTalk_170908_03277_TA"
 cfg.train.test_subjects = "FaceTalk_170809_00138_TA FaceTalk_170731_00024_TA"
 
 cfg.inference = CN(new_allowed=True)
-cfg.inference.background_black = True
+cfg.inference.background_black = False

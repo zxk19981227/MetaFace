@@ -1,4 +1,11 @@
 dataset: BIWI
+
+vertice_dim: 70110
+video_fps: 25
+feature_dim: 1024
+
+
+
 Experimets:
   MAX_EPOCH: 200
   TYPE: Adam
@@ -14,4 +21,5 @@ LOSS:
 train:
   train_subjects: "F2 F3 F4 M3 M4 M5"
   val_subjects: "F2 F3 F4 M3 M4 M5"
-  test_subjects: "F2 F3 F4 M3 M4 M5"
+  test_subjects: "F1 F5 F6 F7 F8 M1 M2 M6"
+neural_process: True

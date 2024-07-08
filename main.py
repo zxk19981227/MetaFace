@@ -14,6 +14,9 @@ def main(paraser_args):
     config_file = paraser_args.cfg
     # print(f'cfg lora is {cfg.lora}')
     cfg.merge_from_file(config_file)
+    from utils import update_cfg
+
+    update_cfg(cfg)
     if cfg.model.use_pretrained:
         model = MamlTrainer.load_from_checkpoint(cfg.model.pretrained)
     else:

@@ -56,7 +56,7 @@ def dtw(x, y, dist, warp=1, w=inf, s=1.0):
         for j in range(c):
             if (isinf(w) or (max(0, i - w) <= j <= min(c, i + w))):
 
-                D1[i, j] = np.mean(dist(x[i], y[j]))
+                D1[i, j] = torch.mean(dist(x[i], y[j]))
     C = D1.copy()
     jrange = range(c)
     for i in range(r):
@@ -75,7 +75,7 @@ def dtw(x, y, dist, warp=1, w=inf, s=1.0):
         path = range(len(x)), zeros(len(x))
     else:
         path = _traceback(D0)
-    return D1[-1, -1], C, D1, path
+    return D1[-1, -1]/len(path[0]), C, D1, path
 
 
 def _traceback(D):
@@ -131,7 +131,7 @@ if __name__ == '__main__':
 def distance_face(x,y):
     x=x.view(-1,3)
     y=y.view(-1,3)
-    distance_x_y=torch.sum((x-y)**2,dim=-1)
+    distance_x_y=torch.sqrt(torch.sum((x-y)**2,dim=-1))
     distance_x_y=torch.mean(distance_x_y)
     return distance_x_y
 class Metric:
@@ -171,6 +171,7 @@ class Metric:
         target_mesh_sequence=target_mesh_sequence[:,self.lip_mask]
         input_mesh_sequence=input_mesh_sequence*1000
         target_mesh_sequence=target_mesh_sequence*1000
+        print(input_mesh_sequence.shape)
         dtw_loss,_,_,_=dtw(
             input_mesh_sequence.view(pose_length,-1,3).cpu(),target_mesh_sequence.view(pose_length,-1 ,3).cpu(),
             dist=distance_face
@@ -226,6 +227,7 @@ def get_data_path(dataset_type='train', split=None):
                   'val': [i for i in cfg.train.val_subjects.split(" ") if i != ''],
                   "test": [i for i in cfg.train.test_subjects.split(" ") if i != '']}
     existing_dataset_id = data_split[dataset_type]
+    print(split)
     audio_path_list = [
         i for i in audio_list if
                        '_'.join(i.split('_')[:-1]) in existing_dataset_id and int(i.split(".")[0][-2:]) in split
@@ -272,25 +274,7 @@ def collate_fn(batch):
         audio, vertice, template, filenames,
         vertices_masks, speaker_ids
     )
-# Returns a collate function that converts one big tensor into a list of task-specific tensors
-# def collate_fn(item_list):
-#     # batch componments : audio,vertice,template,speaker_id
-#     audio_batch,vertice_batch,template_batch,speaker_batch=[],[],[],[]
-#
-#     for batch in item_list:
-#         audio,vert,temp,speaker=batch
-#         audio_batch.append(audio)
-#         vertice_batch.append(vert)
-#         template_batch.append(temp)
-#         speaker_batch.append(speaker)
-#     audio_batch=pad_sequence(audio_batch,batch_first=True)
-#     vertice_mask_batch=[torch.ones(each.shape) for each in vertice_batch]
-#     vertice_batch=pad_sequence(vertice_batch,batch_first=True)
-#     vertice_mask_batch=pad_sequence(vertice_mask_batch,batch_first=True)
-#     template_batch=pad_sequence(template_batch,batch_first=True)
-#     speaker_batch=torch.tensor(speaker_batch)
-#
-#     return list(zip(audio_batch,vertice_batch,vertice_mask_batch,template_batch,speaker_batch))
+
 
 
 
@@ -301,7 +285,7 @@ def check_path_valid(audio_path, vertices_path):
     else:
         return False
 
-3
+
 def mask_generation(length):
     feature_length = torch.ones(length)
     return feature_length

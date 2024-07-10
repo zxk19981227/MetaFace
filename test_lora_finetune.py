@@ -18,18 +18,18 @@ def TrainSingleSample(trainer):
     train_dataset=getTestDataset('test','train')
     train_sample_dict=train_dataset.person_file_dict
     sample_dict=test_dataset.person_file_dict
-    assert train_sample_dict.kes()==sample_dict.keys()
+    assert train_sample_dict.keys()==sample_dict.keys()
     total_face_l2=[]
     total_lip_l2=[]
     total_lip_dtw=[]
     total_lip_l2_max=[]
     total_lip_vertice_max=[]
+    total_diff=[]
     metrics=Metric()
-    # lips_vertice=
 
     for speaker in tqdm(sample_dict.keys()):
-        # for sample_idx in range(len(sample_dict[speaker])):
-        sample_idxs=random.sample(cfg.n_sample,len(train_sample_dict[speaker]))
+
+        sample_idxs=random.sample(list(range(len(train_sample_dict[speaker]))),cfg.n_sample)
         model=copy.deepcopy(trainer.model).cpu()
         total = sum([param.nelement() for param in model.parameters()])
         print(f'total param for pre is {total/1e6}')
@@ -51,10 +51,10 @@ def TrainSingleSample(trainer):
         optimizer = Adam(parameters, lr=cfg.finetune_lr)
 
         for i in range(cfg.finetune_step):
-            sample_idxs=random.shuffle(sample_idxs)
+            random.shuffle(sample_idxs)
             for sample_idx in sample_idxs:
                 optimizer.zero_grad()
-                sample=test_dataset.__getitem__((sample_idx,speaker))
+                sample=train_dataset.__getitem__((sample_idx,speaker))
                 audio, vert, temp, speaker, _ = sample
                 audio=audio.to(device).unsqueeze(0)
                 vertice=vert.to(device).unsqueeze(0)
@@ -70,7 +70,6 @@ def TrainSingleSample(trainer):
                 template=temp.view(temp.shape[0],1,-1)
                 predict_face=predict+template
                 loss=trainer.loss_function(vertice,predict_face,vertice_mask)
-                # print(f'loss for step {i} is {loss}')
                 loss.backward()
                 optimizer.step()
         with torch.no_grad():
@@ -78,8 +77,6 @@ def TrainSingleSample(trainer):
             lip_dis_mouth_max = []
             model.eval()
             for test_idx in range(len(sample_dict[speaker])):
-                if test_idx==sample_idx:
-                    continue
                 sample = test_dataset.__getitem__((test_idx, speaker))
                 audio, vert, temp, speaker, _ = sample
                 audio,vert,temp=audio.to(device).unsqueeze(0),vert.to(device).unsqueeze(0),temp.to(device).unsqueeze(0)
@@ -112,7 +109,7 @@ def TrainSingleSample(trainer):
 
             motion_std = np.mean(np.stack(motion_stds, axis=0))
             l2_dis_mouth_max = np.mean(np.concatenate(lip_dis_mouth_max, axis=0))
-            # total_diff.append(motion_std)
+            total_diff.append(motion_std)
             total_lip_vertice_max.append(l2_dis_mouth_max)
         # exit()
     print(f'mean total lip diff is {np.mean(total_lip_vertice_max)}')
@@ -120,7 +117,7 @@ def TrainSingleSample(trainer):
     print(f"total face l2 is {np.mean(total_face_l2)}")
     print(f'total lip dw is {np.mean(total_lip_dtw)}')
     print(f"total lip l2 is {np.mean(total_lip_l2)}")
-    prnt(f"total lip max is {np.mean(total_lip_l2_max)}")
+    print(f"total lip max is {np.mean(total_lip_l2_max)}")
 if __name__=="__main__":
     args = get_args()
     config_file = args.cfg

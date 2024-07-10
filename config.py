@@ -16,6 +16,7 @@ cfg.vertice_dim = 5023 * 3
 cfg.min_threshold=0.9
 cfg.finetune_lr=1e-4
 cfg.lora=False
+cfg.n_sample=4
 
 cfg.device = 'cuda'
 cfg.lr = 1e-4

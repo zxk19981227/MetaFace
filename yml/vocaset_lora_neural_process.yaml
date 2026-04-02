@@ -7,7 +7,7 @@ Experimets:
   EPOCHS: [0]
 lora: True
 neural_process: True
-n_sample: 2
+n_sample: 4
 LOSS:
   LOSS_Lip_W: 1000.0
   LOSS_Sync_W: 1000.0

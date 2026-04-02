@@ -171,7 +171,7 @@ class Metric:
         target_mesh_sequence=target_mesh_sequence[:,self.lip_mask]
         input_mesh_sequence=input_mesh_sequence*1000
         target_mesh_sequence=target_mesh_sequence*1000
-        print(input_mesh_sequence.shape)
+        # print(input_mesh_sequence.shape)
         dtw_loss,_,_,_=dtw(
             input_mesh_sequence.view(pose_length,-1,3).cpu(),target_mesh_sequence.view(pose_length,-1 ,3).cpu(),
             dist=distance_face
@@ -299,7 +299,7 @@ def get_vertice_std(vertice_motion, upper_map):
     return L2_dis_upper
 
 
-def mse_computation(vertice_gt, vertice_pred, upper_map, mouth_map, vertice_mask):
+def mse_computation(vertice_gt, vertice_pred, upper_map, mouth_map, vertice_mask=None):
     """
 
     :param vertice_mask:
@@ -312,7 +312,10 @@ def mse_computation(vertice_gt, vertice_pred, upper_map, mouth_map, vertice_mask
     # face_template = cfg.template
     pred_length = vertice_pred.shape[0]
     gt_length = vertice_gt.shape[0]
-    vertice_mask_len = int(torch.sum(vertice_mask).item())
+    if vertice_mask is None:
+        vertice_mask_len=gt_length
+    else:
+        vertice_mask_len = int(torch.sum(vertice_mask).item())
 
     max_length = min(min(pred_length, gt_length), vertice_mask_len)
     vertices_pred = vertice_pred[:max_length].view(max_length, -1, 3)
@@ -338,6 +341,7 @@ def linear_interpolation(features, input_fps, output_fps):
 
 
 def length_same(gt_vertice, pred_vertice):
+
     min_le = min(gt_vertice.shape[1], pred_vertice.shape[1])
     gt_vertice = gt_vertice[:, :min_le]
     pred_vertice = pred_vertice[:, :min_le]

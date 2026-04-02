@@ -12,6 +12,7 @@ For comments or questions, please email us at voca@tue.mpg.de
 '''
 
 import pyrender
+from tqdm import tqdm
 
 import os
 import tempfile
@@ -126,7 +127,7 @@ def render_sequence_meshes(
     center = np.mean(sequence_vertices[0], axis=0)
     video_fname_pred = os.path.join(out_path, file_type+ '.mp4')
     video_audio_fname_pred = os.path.join(out_path, file_type + '_with_audio' + '.mp4')
-    for i_frame in range(num_frames):
+    for i_frame in tqdm(range(num_frames)):
         render_mesh = Mesh(sequence_vertices[i_frame], template.f)
         if vt is not None and ft is not None:
             render_mesh.vt, render_mesh.ft = vt, ft

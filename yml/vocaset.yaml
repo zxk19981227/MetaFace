@@ -5,7 +5,7 @@ Experimets:
   GAMMA: 0.1
   STEPS: [0]
   EPOCHS: [0]
-
+neural_process: False
 LOSS:
   LOSS_Lip_W: 1000.0
   LOSS_Sync_W: 1000.0

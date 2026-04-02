@@ -18,8 +18,6 @@ from utils import check_path_valid, get_data_path, collate_fn
 class AudioDataset(Dataset):
     def __init__(self, data_type,usage=None):
         super().__init__()
-        if usage==None:
-            usage=data_type
         self.dataset_name = cfg.dataset
         self.backbone = cfg.backbone
         self.data_type = data_type
@@ -65,7 +63,7 @@ class AudioDataset(Dataset):
             else:
                 self.person_file_dict[subject_id].append(file.replace("wav", "npy"))
         for file in self.data:
-            user_name = '_'.join(file.split('_')[:4])
+            user_name = '_'.join(file.split('_')[:-1])
             if user_name not in self.speaker_dict:
                 self.speaker_dict[user_name] = len(self.speaker_dict)
                 raise NotImplementedError
